@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<script>
+			window.onload = function(){
+			let text = document.getElementById('text').textContent
+			console.log(text);
+            const pattern = /[\s.?,"';:!()[\]{}<>\/]/ 
+			let word_array = text.split(pattern)
+            console.log(word_array)
+			//remove '' from word array
+			word_array = word_array.filter(e => e!='')
+            console.log(word_array)
+            let wrappedWithSpan = ''
+                let taggedWord
+                for (let i=0; i<word_array.length; i++) {
+                    taggedWord = '<span id=word_'+(i+1)+'>'+word_array[i]+'</span>'
+                    wrappedWithSpan = wrappedWithSpan + taggedWord
+                }
+                console.log(wrappedWithSpan);
+			}
+		</script>
+	</head>
+	<body>
+		the other text
+		<div id="text">
+			this is
+			text,break&nbsp;up&nbsp;&nbsp;the;words!
+			istest testis,
+			text <a href="#">text build</a> html tag! 
+		</div>
+		the other text
+	</body>
+</html>
+

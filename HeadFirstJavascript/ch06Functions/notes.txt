@@ -1,0 +1,9 @@
+Functions:
+    Functions allow you to turn big problems into small problems, which become much easier to solve.
+    Functions provide a mechanism to separate script tasks and then complete them with reusable chunks of code.
+    Functions serve as a great way to eliminate duplicate code since the code in a function can be reused as many times as you want.
+    Arguments allow you to pass data into functions as input for a given task.
+    lowerCamelCase
+    we can pass a function as a parameter to another function
+    function parameters act as local variables
+    

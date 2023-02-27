@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <script type="text/javascript" src="functions.js" defer></script>
+    <script type="text/javascript" src="interactions.js" defer></script>
+
+    <title>Form</title>
+</head>
+<body>
+    <div class="container">
+        <h3>Ready to find a new house?</h3>
+        <div class="form-container">
+            <form action="">
+                <div class="income">
+                    <label for="income">Enter your annual income: </label>    
+                    <input type="text" id="income" onblur="validateNumber(this.value, 'income')" />
+                </div>
+                <div class="bedrooms">
+                    <label for="bedrooms">Enter the number of bedrooms: </label>    
+                    <input type="text" id="bedrooms" onblur="validateNumber(this.value, 'bedrooms')" />
+                </div>
+                <div class="zipCode">
+                    <label for="zipCode">Enter your ZIP code: </label>    
+                    <input type="text" id="zipCode" onblur="validateZipCode(this.value, 'ZIP code')">
+                </div>
+                <p class="error" id="error"></p>
+                <div class="buttons">
+                    <button type="button" id="calculate" onclick="calculatePrice()">Calculate Price</button>
+                    <button type="button" id="shop">Shop for Houses</button>
+                </div>
+                <p class="output" id="output"></p>
+            </form>
+        </div>
+    </div>
+
+
+</body>
+</html>

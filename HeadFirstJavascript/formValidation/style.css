@@ -1,0 +1,46 @@
+.container{
+    max-width: 500px;
+    margin:0 auto;
+    padding: 0.5rem;
+    box-shadow: 1px 1px 10px 2px grey
+
+
+}
+
+.container h3 {
+    text-align: center;
+}
+.container .form-container {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+}
+.form-container input {
+    width: 20%;
+    margin-left: 0.5rem;
+}
+.income,
+.bedrooms,
+.zipCode {
+    margin-bottom: 0.5rem;
+}
+.income,
+.bedrooms,
+.zipCode,
+.buttons {
+    display: flex;
+    justify-content: center;
+}
+.buttons {
+    justify-content: space-evenly;
+}
+.error {
+    color:red;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+.output {
+    color: green;
+    text-align: center;
+}

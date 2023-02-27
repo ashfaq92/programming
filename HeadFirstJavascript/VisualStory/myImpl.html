@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet"  href="./style.css">
+    <title>Stick Figure Adventure</title>
+    <script src="./logic.js"></script> 
+</head>
+<body>
+    <img id="scenes" src="./scene0.png" />
+    <br/>
+    <div id="sceneText"></div>
+    <br/>
+    <button 
+        id="decision1" 
+        onmouseover="this.className = 'decision-inverse'" 
+        onmouseleave="this.className = 'decision'" 
+        class="decision" 
+        type="button" 
+        onclick="changeScene(1)">
+        1
+    </button>
+    <button 
+        id="decision2" 
+        onmouseover="this.className = 'decision-inverse'" 
+        onmouseleave="this.className = 'decision'" 
+        type="button" 
+        onclick="changeScene(2)">2</button>
+    <button id="back" type="button" onclick="back(backScene, backDecision)">Back</button>
+    <button id="reset" type="button" onclick="reset()">reset</button>
+    <br />
+    <div id="history"></div>
+</body>
+</html>
