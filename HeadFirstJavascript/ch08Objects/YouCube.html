@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouCube</title>
+    <style>
+        .normal-entry {
+            border: 1px solid #ccc;
+            padding: 0.5rem;
+            cursor: pointer;
+        }
+        .inverse-entry {
+            background-color: #ccc;
+            border: 1px solid #000;
+            padding: 0.5rem;
+            cursor: pointer;
+        }
+        .form-field {
+            padding: 0.5rem;
+        }
+    </style>
+    <script>
+        function Blog(text, date) {
+            this.text = text
+            this.date = new Date(date)
+        }
+        const blogs = [
+            new Blog("Got the new cube I ordered...", "08/14/2008"), 
+            new Blog("Solved the new cube but of course...", "08/19/2008"), 
+            new Blog("Managed to get a headache toiling...", "08/16/2008"), 
+            new Blog("Found a 7x7x7 cube for sale...", "08/21/2008"),
+            new Blog("Lorem ipsom dolor sit amit", "01/21/2018")
+        ]
+        blogs.sort(function(a, b) {
+            return b.date - a.date
+        })
+        function removeChildren(element) {
+            while (element.firstChild) 
+                element.removeChild(element.firstChild)
+            return element
+        }
+        function formatDate(date) {
+            let day = date.getDate()
+            let month = date.getMonth() + 1
+            // padding with zeros if needed
+            if (day < 10) day = '0' + day
+            if (month < 10) month = '0' + month
+            let year = date.getFullYear()
+            return month + '/' + day + '/' + year
+        }
+        function populateBlogs(blogs) {
+            let target = getById('blogsContainer')
+            target = removeChildren(target)   
+            blogs.forEach( (blog, index) => {
+                console.log(index)
+                let tag = document.createElement('p')
+                tag.onclick = () => viewBlog(blog)
+                index % 2 == 0 ? tag.classList.add('normal-entry') : tag.classList.add('inverse-entry')
+                let dateElement = document.createElement('strong')
+                let dateText = document.createTextNode(formatDate(blog.date))
+                dateElement.appendChild(dateText)
+                let textElement = document.createElement('p')
+                let textText = document.createTextNode(blog.text)
+                textElement.appendChild(textText)
+                tag.appendChild(dateElement)
+                tag.appendChild(textElement)
+                target.appendChild(tag)
+            })
+        }
+        function testFunc() {
+            console.log('test called')
+        }
+        function getById(id) {
+            return document.getElementById(id)
+        }
+        function searchBlogs() {
+            event.preventDefault()
+            let searchQuery = getById('searchQuery').value
+            console.log('searchQuery', searchQuery)
+            const searchedBlogs = []
+            blogs.forEach(blog => {
+                if (blog.text.includes(searchQuery)) {
+                    searchedBlogs.push(blog)
+                    console.log('found', blog)
+                }
+            })
+            populateBlogs(searchedBlogs)
+        }
+        function viewBlog(blog) {
+            alert('[' + formatDate(blog.date) + ']' + ' ' + blog.text)
+        }
+        function getRandBlog() {
+            const randIndex = Math.floor(Math.random() * blogs.length)
+            return blogs[randIndex]
+        }
+        function viewRandBlog() {
+            const randBlog = getRandBlog()
+            viewBlog(randBlog)
+        }
+        window.onload = () => {
+            populateBlogs(blogs.slice(0,3))
+            getById('showAllBlogsBtn').onclick = () => populateBlogs(blogs)
+            getById('searchBlogForm').onsubmit = (event) => searchBlogs()
+            getById('viewRandBlogBtn').onclick = () => viewRandBlog()
+        }
+    </script>
+</head>
+<body>
+    <br />
+    <div id="searchContainer">
+        <form id="searchBlogForm" action="" method="get">
+            <input placeholder="type any search query..." required type="text" id="searchQuery" class="form-field">
+            <input class="form-field" type="submit" value="Search the Blog" />
+        </form>
+    </div>
+    <br />
+    <div id="blogsContainer">
+
+    </div>
+    <button id="showAllBlogsBtn">Show All Blog Entries</button>
+    <button id="viewRandBlogBtn">View a Random Blog Entry</button>
+</body>
+</html>

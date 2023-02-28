@@ -1,24 +1,8 @@
-function showClimateMsg() {
-    //return;
-    alert(constructMessage());
+function Blog(date, body) {
+    this.date = date
+    this.body = body
 }
 
-function constructClimateMsg() {
-    var msg = "";
-    msg += "Local "; // "Local ";
-    if (getTemp() > 80)
-        msg += "warming ";
-    else
-        msg += "cooling ";
-    msg += "is ";
-    if (getTemp() <= 70)
-        return msg + "a hoax!";
-    else
-        return msg + "real!";
-}
+const blogEntry = new Blog('12/12/23', 'lorem ipsum')
 
-function getTemp() {
-    // Read the actual temperature
-    var actualTemp = readSensor();
-    return actualTemp;
-}
+console.log(blogEntry);
