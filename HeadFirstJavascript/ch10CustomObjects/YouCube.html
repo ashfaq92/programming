@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouCube With Custom Objects</title>
+    <style>
+        .text-center {
+            text-align: center;
+        }
+        .entry {
+            margin-bottom : 0.5rem;
+            padding: 0.5rem;
+            cursor: pointer;
+            display: block;
+            width: 100%;
+            float: left;
+        }
+        .normal-entry {
+            border: 1px solid #ccc;
+        }
+        .inverse-entry {
+            background-color: #ccc;
+            border: 1px solid #000; 
+        }
+        .form-field {
+            padding: 0.5rem;
+        }
+        .img-responsive {
+            width: 100%;
+        }
+        .left {
+            display: block;
+            width: 25%;
+            float: left;
+        }
+        .right {
+            display: block;
+            width: 70%;
+            float: left;
+        }
+    </style>
+    <script>
+        // Helper functions
+        function getById(id) {
+            return document.getElementById(id)
+        }
+        // Classes
+        Date.prototype.shortFormat = function() {
+            let year = this.getFullYear()
+            let day = this.getDate()
+            let month = this.getMonth() + 1
+            // padding with zeros if needed
+            if (day < 10) day = '0' + day
+            if (month < 10) month = '0' + month
+            return month + '/' + day + '/' + year
+        }
+
+        // class methods (cannot be accessed by objects)
+        Blog.blogSorter = function(blog1, blog2){
+            return blog2.date - blog1.date
+        }
+
+        // class-owned methods
+        Blog.prototype.signature = 'Puzzler Ruby'
+
+        Blog.prototype.showImage = function() {
+            console.log(this.imageURL)
+            if (this.imageURL) {
+                return `<img alt="blog-img" class="img-responsive" src="${this.imageURL}" />` 
+            } else {
+                return ''
+            }
+        }
+
+        Blog.prototype.containsText = function(searchQuery) {
+            this.text.includes(searchQuery)
+        }
+        
+        Blog.prototype.toString = function() {
+            return '[' + this.date.shortFormat() + ']' + ' ' + this.text 
+        }
+
+        Blog.prototype.view = function() {
+            alert(Blog.toString())
+        }
+
+        Blog.prototype.toHTML = function(highlight) {
+            return `
+            <div class="entry ${highlight ? 'normal-entry' : 'inverse-entry'}">
+                <div class='left'>${this.showImage()}</div>
+                <div class='right'>
+                    <strong>${this.date.shortFormat()}</strong>
+                    <p>${this.text}</p>
+                    <em>by ${this.signature}</em>
+                </div>
+            </div>`
+
+        }
+        // Constructors
+        function Blog(text, date, imageURL) {
+            this.text = text
+            this.date = date ? new Date(date) : new Date()
+            this.imageURL = imageURL // null is specified by default if imageURL isn't passed
+        }
+
+        const blogs = [
+            new Blog("Got the new cube I ordered...", "08/14/2008"), 
+            new Blog("Solved the new cube but of course...", "08/19/2008"), 
+            new Blog("Managed to get a headache toiling...", "08/16/2008"), 
+            new Blog("Found a 7x7x7 cube for sale...", "08/21/2008", "./images/7x7x7-cube.jpeg"),
+            new Blog("Lorem ipsom dolor sit amit", "01/21/2018"),
+            new Blog('Find many great new & used options and get the best deals for QiYi Strange Puzzles 3x3 Fisher Stickerless Magic Cube Puzzle Speed Professional at the ...', '', './images/strange-cube.jpeg')
+        ]
+        
+        function showBlogs(num) {
+            blogs.sort(Blog.blogSorter)
+            num ? populateBlogs.slice(0, num) : populateBlogs(blogs)
+        }
+        function populateBlogs(blogs) {
+            let target = getById('blogsContainer')
+            let output = ''
+            blogs.forEach( (blog, index) => {
+                let highlight = index % 2 == 0
+                output += blog.toHTML(highlight)
+            })
+            target.innerHTML = output
+        }
+        
+        
+        function searchBlogs() {
+            event.preventDefault()
+            let searchQuery = getById('searchQuery').value
+            const filteredBlogs = blogs.filter(blog => blog.containsText(searchQuery))
+            populateBlogs(filteredBlogs)
+        }
+        
+        function viewRandBlog() {
+            const randIndex = Math.floor(Math.random() * blogs.length)
+            const randBlog = blogs[randIndex]
+            randBlog.view()
+        }
+        window.onload = () => {
+            blogs.sort(Blog.blogSorter)
+            populateBlogs(blogs.slice(0,3))
+            getById('showAllBlogsBtn').onclick = () => populateBlogs(blogs)
+            getById('searchBlogForm').onsubmit = (event) => searchBlogs()
+            getById('viewRandBlogBtn').onclick = () => viewRandBlog()
+        }
+    </script>
+</head>
+<body>
+    <br />
+    <div id="searchContainer" class="text-center">
+        <form id="searchBlogForm" action="" method="get">
+            <input placeholder="Type any search query..." required type="text" id="searchQuery" class="form-field">
+            <input class="form-field" type="submit" value="Search the Blog" />
+        </form>
+    </div>
+    <br />
+    <div id="blogsContainer">
+
+    </div>
+    <br />
+    <div class="text-center">
+        <button id="showAllBlogsBtn">Show All Blog Entries</button>
+        <button id="viewRandBlogBtn">View a Random Blog Entry</button>
+    </div>
+    
+</body>
+</html>
