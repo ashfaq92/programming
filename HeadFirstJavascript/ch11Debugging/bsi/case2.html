@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>BSI Case 2: Winning Caller</title>
+    <style>
+      #myConsole {
+        border: 1px solid #ccc;
+        width: 80%;
+        margin: auto;
+        display: block;
+        height: 100vh;
+        background-color:#f1f1f1;
+        padding: 0.5rem;
+      }
+    </style>
+
+    <script>
+      let winningNum = 3
+      // Total number of calls
+      let callNum = 0;
+
+      function checkWinner() {
+        const callerField = document.getElementById("caller")
+        // Increment the call number
+        callNum++
+        // Check for a winner
+        if (callNum == winningNum) {
+          alert(callerField.value + ", caller number "  + callNum + "...today's winner!");
+          resetAll()
+        }
+        else {
+          updateMyConsole()
+          callerField.placeholder = "Next caller";
+          callerField.value = null
+          callerField.focus()
+          callerField.select()
+        }
+      }
+
+      function resetAll() {
+        document.getElementById("callForm").reset();
+        callNum = 0
+        document.getElementById('myConsole').innerHTML = ''
+      }
+
+
+      function updateMyConsole(data){
+        const console = document.getElementById('myConsole')
+        console.innerHTML += `<p> CallNum:\t${callNum} </p>`
+      }
+
+      window.onload = () => {
+        document.getElementById('callForm').onsubmit = (event) => {
+          event.preventDefault()
+          checkWinner()
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <form id="callForm">
+      <img src="radio.png" alt='ra"dio' />
+      Caller name: 
+      <input required id="caller" name="caller" type="text" />
+      <input type="submit" value='Call' />
+    </form>
+    <br>
+    <code id="myConsole">
+      
+    </code>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+Errors:
+    Syntax
+    Logical
+    Runtime
+
+Tips:
+    curley braces
+    parenthesses
+    apostrophes and double-quotes
+    escape characters
+    typos
+    be careful about '=' and '=='
+    make sure objects (especially webpage elements) are created/loaded before accessing them
+    Shadowy variables: same names for local and global variables
+    Alert/consoles for temporary variable watch
+    Comments to temporary disable the code
