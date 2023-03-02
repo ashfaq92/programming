@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script>
+
+        function XMLhandler(xmlObj) {
+            console.log('XMLhandler is called!');
+            var serializer = new XMLSerializer();
+            var respStr = serializer.serializeToString(xmlObj);
+            document.getElementById('resp').innerHTML = respStr;
+        }
+        window.onload = function() {
+            const destURL = 'http://127.0.0.1:5500/HeadFirstJavascript/ch12DynamicData/blogsData.xml'
+            const xhr = new XMLHttpRequest()
+            xhr.onreadystatechange = function() {
+                if (this.readyState == 3) {
+                    console.log('receiving data...')
+                }
+                if (this.readyState == 4 && this.status == 200) {
+                    XMLhandler(this.responseXML)
+                }
+            };
+            xhr.open("GET", destURL, true);
+            xhr.send();
+        }
+
+    </script>
+</head>
+<body>
+
+    <pre id="resp">
+        resp
+    </pre>
+    
+</body>
+</html>

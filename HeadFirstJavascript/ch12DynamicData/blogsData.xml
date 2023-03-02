@@ -1,0 +1,36 @@
+<blog>
+    <title>YouCube - The Blog for Cube Puzzlers</title>
+    <author>Puzzler Ruby</author>
+    <entries>
+        <entry>
+            <text>Got the new cube I ordered...</text>
+            <date>08/14/2008</date>
+            <imageURL></imageURL>
+        </entry>
+        <entry>
+            <text>Solved the new cube but of course...</text>
+            <date>08/19/2008</date>
+            <imageURL></imageURL>
+        </entry>
+        <entry>
+            <text>Managed to get a headache toiling...</text>
+            <date>08/16/2008</date>
+            <imageURL></imageURL>
+        </entry>
+        <entry>
+            <text>Found a 7x7x7 cuboid for sale...</text>
+            <date>08/21/2008</date>
+            <imageURL>./images/7x7x7-cube.jpeg</imageURL>
+        </entry>
+        <entry>
+            <text>Lorem ipsom dolor sit amit</text>
+            <date>01/21/2018</date>
+            <imageURL></imageURL>
+        </entry>
+        <entry>
+            <text>Find many great new &amp; used options and get the best deals for QiYi Strange Puzzles 3x3 Fisher Stickerless Magic Cube Puzzle Speed Professional at the ...</text>
+            <date></date>
+            <imageURL>./images/strange-cube.jpeg</imageURL>
+        </entry>
+    </entries>
+</blog>

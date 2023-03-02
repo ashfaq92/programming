@@ -1,0 +1,40 @@
+.text-center {
+    text-align: center;
+}
+.entry {
+    margin-bottom : 0.5rem;
+    padding: 0.5rem;
+    cursor: pointer;
+    display: block;
+    width: 100%;
+    float: left;
+}
+.normal-entry {
+    border: 1px solid #ccc;
+}
+.inverse-entry {
+    background-color: #ccc;
+    border: 1px solid #000; 
+}
+.form-field {
+    padding: 0.5rem;
+}
+.img-responsive {
+    width: 100%;
+}
+.left {
+    display: block;
+    width: 25%;
+    float: left;
+}
+.right {
+    display: block;
+    width: 70%;
+    float: left;
+}
+
+.loading-img {
+    display: block;
+    width: 5%;
+    margin: auto;
+}
