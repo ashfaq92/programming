@@ -21,3 +21,5 @@ source /home/ashfamt/programming/catkin_ws/devel/setup.bash
 `catkin_create_pkg hello_world roscpp rospy std_msgs`
 
 
+Best way:
+urdf file -> gazebo conversion -> world file -> launch file -> run
