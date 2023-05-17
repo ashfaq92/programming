@@ -131,7 +131,10 @@ endif()
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
   include("/home/ashfamt/programming/catkin_ws/build/gtest/cmake_install.cmake")
+  include("/home/ashfamt/programming/catkin_ws/build/ros_robotics/cmake_install.cmake")
+  include("/home/ashfamt/programming/catkin_ws/build/Tutorials-2020/cmake_install.cmake")
   include("/home/ashfamt/programming/catkin_ws/build/hello_world/cmake_install.cmake")
+  include("/home/ashfamt/programming/catkin_ws/build/my_bot/cmake_install.cmake")
 
 endif()
 

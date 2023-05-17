@@ -1,0 +1,8 @@
+# CMake generated Testfile for 
+# Source directory: /home/ashfamt/programming/catkin_ws/src/Turtlebot_on_noetic/ecl_navigation/ecl_mobile_robot
+# Build directory: /home/ashfamt/programming/catkin_ws/build/Turtlebot_on_noetic/ecl_navigation/ecl_mobile_robot
+# 
+# This file includes the relevant testing commands required for 
+# testing this directory and lists subdirectories to be tested as well.
+subdirs("include")
+subdirs("src")
