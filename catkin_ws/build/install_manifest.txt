@@ -1,9 +1,0 @@
-/home/ashfamt/programming/catkin_ws/install/_setup_util.py
-/home/ashfamt/programming/catkin_ws/install/env.sh
-/home/ashfamt/programming/catkin_ws/install/setup.bash
-/home/ashfamt/programming/catkin_ws/install/local_setup.bash
-/home/ashfamt/programming/catkin_ws/install/setup.sh
-/home/ashfamt/programming/catkin_ws/install/local_setup.sh
-/home/ashfamt/programming/catkin_ws/install/setup.zsh
-/home/ashfamt/programming/catkin_ws/install/local_setup.zsh
-/home/ashfamt/programming/catkin_ws/install/.rosinstall

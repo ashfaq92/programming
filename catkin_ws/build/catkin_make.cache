@@ -1,2 +1,0 @@
-Tutorials-2020:hello_world:my_bot:ros_robotics
--DCATKIN_DEVEL_PREFIX=/home/ashfamt/programming/catkin_ws/devel -DCMAKE_INSTALL_PREFIX=/home/ashfamt/programming/catkin_ws/install -G Unix Makefiles
