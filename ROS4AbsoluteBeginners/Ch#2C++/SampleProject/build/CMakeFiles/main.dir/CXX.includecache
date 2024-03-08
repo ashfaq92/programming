@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/ashfamt/OneDrive/programming/ROS4AbsoluteBeginners/Ch#2C++/Project/calculator.cpp
+calculator.h
+/home/ashfamt/OneDrive/programming/ROS4AbsoluteBeginners/Ch#2C++/Project/calculator.h
+
+/home/ashfamt/OneDrive/programming/ROS4AbsoluteBeginners/Ch#2C++/Project/calculator.h
+iostream
+-
+
+/home/ashfamt/OneDrive/programming/ROS4AbsoluteBeginners/Ch#2C++/Project/main.cpp
+calculator.h
+/home/ashfamt/OneDrive/programming/ROS4AbsoluteBeginners/Ch#2C++/Project/calculator.h
+

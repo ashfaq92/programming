@@ -1,0 +1,20 @@
+<launch>
+    <!-- Set parameter on parameter server -->
+    <arg name="model" />
+    <param name="robot_description" command="$(find xacro)/xacro '$(find ros_robotics)/urdf/$(arg model)' " />
+    <arg name="use_gui" default="True" />
+
+
+    <!-- send joint value from gui -->
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" output="screen" />
+    <node pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" name="joint_state_publisher_gui" output="screen" if="$(arg use_gui)" />
+
+
+    <!-- use joint positions to update tf -->
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+    
+    <!-- Visualize robot modle in 3D  -->
+    <node name="rviz" pkg="rviz" type="rviz"
+        args="-d $(find ros_robotics)/urdf.rviz" required="true" />
+
+</launch>
