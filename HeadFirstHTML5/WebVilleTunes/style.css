@@ -1,0 +1,26 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+ul#playlist{
+    list-style-type: none;
+    width: 80%;
+    display: block;
+    border-collapse: collapse;
+    margin: 0 auto;
+    margin-top: 1%;
+    border: 1px solid grey;
+
+}
+
+li.song {
+    display: block;
+    background-color: #ccc;
+    padding: 1%;
+    border-bottom: 1px dotted grey;
+
+}
+
+li.song:last-child {
+    border:none;
+}

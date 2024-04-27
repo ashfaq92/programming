@@ -1,0 +1,14 @@
+.error-text {
+    color: red;
+}
+
+.success-text {
+    color: green;
+}
+
+#myMap {
+    position: relative;
+    margin: 0 auto;
+    width: 600px;
+    height: 400px;
+}

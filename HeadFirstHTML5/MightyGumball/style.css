@@ -1,0 +1,23 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    width: 60%;
+    margin: 0 auto;
+}
+
+h1 {
+    margin: 5% 0;
+}
+
+
+.sale-item {
+    font-size: larger;
+    padding: 1%;
+}
+
+.sale-item:nth-child(odd) {
+    background-color: #ccc;
+}

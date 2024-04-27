@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Where am I?</title>
+        <style>
+            .error-text {
+                color: red;
+            }
+
+            .success-text {
+                color: green;
+            }
+
+            #myMap {
+                position: relative;
+                width: 600px;
+                height: 400px;
+            }
+        </style>
+        <script
+            src='http://www.bing.com/api/maps/mapcontrol?key=Al8kRket0eRfgqMaiLMyyjfhzatAr0MA0QwEjpK7ehZYtXMGyJYgVyRhE-qluCtd'
+            async defer></script>
+
+        <script>
+            // constants go here
+            const hqCoords = {
+                lat: 47.624851,
+                lon: -122.52099
+            }
+        </script>
+        <script>
+            window.onload = onLoadHandler
+
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 1000,
+                maximumAge: 0
+            }
+
+            function onLoadHandler() {
+                getMyLocation()
+            }
+
+            function getMyLocation() {
+
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        displayLocation,
+                        displayError,
+                        options
+                    )
+                } else {
+                    alert('Oops, no geolocation support')
+                }
+            }
+
+            function displayError(err) {
+
+                let msg = err.constructor.name + ':' + ' Code: ' + err.code + ' Message: ' + err.message
+                
+                if (err.code == 3) {
+                    options.timeout += 1000
+                    msg += ' .Retrying...with timeout: ' + options.timeout
+                    navigator.geolocation.getCurrentPosition(
+                        displayLocation,
+                        displayError,
+                        options
+                    )                    
+
+                }
+
+                const targetDiv = document.getElementById('location')
+                targetDiv.classList.add('error-text')
+                targetDiv.replaceChildren(document.createTextNode(msg))
+
+
+            }
+
+            function displayLocation(position) {
+                const lat = position.coords.latitude
+                const lon = position.coords.longitude
+                let msg = 'You are at lon: ' + lon + ' and at lat: ' + lat
+                msg += ` with  ${position.coords.accuracy} ${position.coords.accuracy > 1 ? 'meters' : 'meter'}  accuracy`
+                // msg += 'with ' + position.coords.accuracy 
+
+                const targetDiv = document.getElementById('location')
+                targetDiv.classList.add('success-text')
+                targetDiv.replaceChildren(document.createTextNode(msg))
+
+
+
+                const distance = computeDistance({ lat, lon }, hqCoords)
+                targetDiv.appendChild(document.createElement('br'))
+                targetDiv.appendChild(document.createTextNode('You are ' + Math.round(distance) + ' km from WickedlySmart HQ'))
+
+                console.log(position)
+
+                showMap(lat, lon)
+            }
+
+            function computeDistance(startCoords, endCoords) {
+                const startLatRads = degreeToRads(startCoords.lat)
+                const startLonRads = degreeToRads(startCoords.lon)
+                const endLatRads = degreeToRads(endCoords.lat)
+                const endLonRads = degreeToRads(endCoords.lon)
+                const radius = 6371
+                const distance = Math.acos(Math.sin(startLatRads) * Math.sin(endLatRads) + Math.cos(startLatRads) * Math.cos(endLatRads) * Math.cos(startLonRads - endLonRads)) * radius
+                return distance
+            }
+
+            function degreeToRads(angle) {
+                const radians = (angle * Math.PI) / 180
+                return radians
+            }
+
+            function showMap(lat, lon) {
+                const centerCoords = new Microsoft.Maps.Location(lat, lon)
+                let mapDiv = document.getElementById('myMap')
+                const mapOptions = {
+                    center: centerCoords,
+                    zoom: 17
+                }
+                let map = new Microsoft.Maps.Map(mapDiv, mapOptions)
+
+                let pushpin = new Microsoft.Maps.Pushpin(centerCoords, {
+                    // title: 'Your Location',
+                    // subTitle: 'This is your exact location'
+                })
+                map.entities.push(pushpin)
+
+                const infoboxOptions = {
+                    title: 'You are here',
+                    description: lat + ' , ' + lon,
+                    visible: false, // Set to false initially to hide the infobox
+                    offset: new Microsoft.Maps.Point(0, 20) // Offset the infobox from the pushpin
+                }
+
+                // Create the infobox
+                let infobox = new Microsoft.Maps.Infobox(centerCoords, infoboxOptions)
+                map.entities.push(infobox);
+
+                // Add click event to show the infobox when the pushpin is clicked
+                Microsoft.Maps.Events.addHandler(pushpin, 'click', function () {
+                    infobox.setOptions({ visible: true });
+                });
+
+                //TODO: Add navigation control (directions)
+                //TODO: Add directions functionality
+                //TODO: Attach search and directions to infobox 
+
+
+            }
+
+
+        </script>
+    </head>
+
+    <body>
+        <div id="location">
+            your location will go here
+        </div>
+        <div id="myMap">
+
+        </div>
+    </body>
+
+</html>
