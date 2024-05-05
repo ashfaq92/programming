@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>TweetShirt</title>
+        <style>
+            .container {
+                width: 80%;
+                /* border: 1px solid red; */
+                margin: 0 auto;
+                display: block;
+            }
+
+            .whiteboard {
+                margin-top: 10px;
+                background-color: #fff;
+                background:
+                    linear-gradient(45deg, rgba(0, 0, 0, 0.02) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.02) 75%, rgba(0, 0, 0, 0.02)),
+                    linear-gradient(45deg, rgba(0, 0, 0, 0.02) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.02) 75%, rgba(0, 0, 0, 0.02));
+
+                background-size: 20px 20px;
+                background-position: 0 0, 10px 10px;
+
+                /* Rest of the styles */
+                border-radius: 5px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+                display: block
+            }
+        </style>
+        <script>
+            window.onload = function () {
+                const previewBtn = document.getElementById('preview')
+                previewBtn.onclick = previewDesign
+                // previewDesign()
+                const printBtn = document.getElementById('print')
+                printBtn.onclick = printDesign
+            }
+
+            function printDesign() {
+                const canvas = document.getElementById('tshirtCanvas')
+                canvas.onclick = function () {
+                    window.location = canvas.toDataURL('image/png')
+                }
+
+            }
+
+            function previewDesign() {
+                const canvas = document.getElementById('tshirtCanvas')
+                if (!canvas.getContext) {
+                    alert('Please upgrade your browser to use canvas!')
+                    return
+                }
+                const options = {
+                    bgColor: document.getElementById('bgColor').value,
+                    shapeType: document.getElementById('shape').value,
+                    shapeColor: document.getElementById('shapeColor').value,
+                    tweet: document.getElementById('tweet').value,
+                    tweetColor: document.getElementById('tweetColor').value,
+                }
+                console.log(options)
+                if (options.tweet == "") {
+                    alert('please fill the tweet textbox')
+                    return
+                }
+
+                // canvas is supported by the browser
+                const ctx = canvas.getContext('2d')
+                ctx.fillRect(0, 0, canvas.width, canvas.height)
+                setBackgroundColor(canvas, options.bgColor)
+                if (options.shapeType == 'circles') {
+                    drawRandomCircles(canvas, 20, options)
+                } else if (options.shapeType == 'squares') {
+                    drawRandomSquares(canvas, 20, options)
+                } else {
+                    alert('unspecified shape')
+                }
+                writeTweet(canvas, options)
+            }
+
+            function writeTweet(canvas, options) {
+                const ctx = canvas.getContext('2d')
+
+                ctx.font = 'bold 20px Arial';
+                ctx.fillStyle = options.tweetColor;
+                ctx.fillText('I saw this tweet', 20, 20);
+                ctx.font = `italic 20px 'Times New Roman', Times, serif`;
+                ctx.fillText(options.tweet, 20, canvas.height / 2);
+
+                ctx.font = 'bold 20px Arial';
+                ctx.fillText('and all I got was this lousy t-shirt!', canvas.width - 350, canvas.height - 20);
+            }
+
+            function setBackgroundColor(canvas, color) {
+                const ctx = canvas.getContext('2d')
+                ctx.fillStyle = color;
+                ctx.fillRect(0, 0, canvas.width, canvas.height)
+            }
+
+            function drawRandomCircles(canvas, number, options) {
+                const ctx = canvas.getContext('2d')
+                const maxRadius = canvas.width > canvas.height ? canvas.height : canvas.width
+
+                for (let i = 0; i < number; i++) {
+                    const randX = canvas.width * Math.random()
+                    const randY = canvas.height * Math.random()
+                    const randR = (maxRadius / 5) * Math.random()
+                    drawCircle(ctx, randX, randY, randR, options.shapeColor)
+                }
+            }
+
+            function drawCircle(ctx, x, y, r, color) {
+                ctx.beginPath()
+                // 1,2: x,y 3:, 4:init, 5:end
+                // ctx.arc(9, 50, 40, 0, 2 * Math.PI)
+                ctx.arc(x, y, r, 0, 2 * Math.PI)
+                ctx.fillStyle = color
+                ctx.fill()
+            }
+
+            function drawRandomSquares(canvas, number, options) {
+                const ctx = canvas.getContext('2d')
+                const smallestSide = canvas.width > canvas.height ? canvas.height : canvas.width
+
+                for (let i = 0; i < number; i++) {
+                    const randX = canvas.width * Math.random()
+                    const randY = canvas.height * Math.random()
+                    const randSize = (smallestSide / 5) * Math.random()
+                    drawSquare(ctx, randX, randY, randSize, options.shapeColor)
+                }
+            }
+
+            function drawSquare(ctx, x, y, randSize, color) {
+                ctx.beginPath()
+                // 1,2: x,y 3,4:width,height
+                ctx.rect(x, y, randSize, randSize)
+                ctx.fillStyle = color
+                ctx.fill()
+            }
+        </script>
+    </head>
+
+    <body>
+        <div class="container">
+            <h1>TweetShirt</h1>
+            <canvas class="whiteboard" id="tshirtCanvas" width="600" height="200">
+                Please upgrade your browser to use canvas!
+            </canvas>
+            <br />
+            <form>
+                <legend>
+                    Select your TweetShirt Options:
+                </legend>
+                <p>
+                    <label for="bgColor">Select background color: </label>
+                    <select id="bgColor">
+                        <option value="white" selected>White</option>
+                        <option value="black">Black</option>
+                    </select>
+                </p>
+                <p>
+                    <label for="shape">Shape (Circles or Squares)?: </label>
+                    <select id="shape">
+                        <option value="circles" selected>Circles</option>
+                        <option value="squares">Squares</option>
+                    </select>
+                </p>
+                <p>
+                    <label for="shapeColor">Shape Color: </label>
+                    <select id="shapeColor">
+                        <option value="#97e1eb" selected>Blue</option>
+                        <option value="#681e14">Red</option>
+                    </select>
+                </p>
+                <p>
+                    <label for="tweet">Write a tweet:</label>
+                    <input type="text" id="tweet" name="tweet"
+                        placeholder="CrossFit is just Fight Club if the first two rules were opposite!" size="50" />
+                </p>
+                <p>
+                    <label for="tweetColor">Tweet Color: </label>
+                    <select id="tweetColor">
+                        <option value="black" selected>Black</option>
+                        <option value="white">White</option>
+                    </select>
+                </p>
+                <p>
+                    <input type="button" id="preview" value="Preview" />
+                </p>
+                <p>
+                    <input type="button" id="print" value="Print" />
+                </p>
+            </form>
+        </div>
+    </body>
+
+</html>

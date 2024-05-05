@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Note to Self</title>
+        <style>
+            body {
+                background-color: #dce1e1;
+            }
+
+
+
+            .note {
+                background-color: #ccc;
+                width: 25%;
+                border-radius: 10px;
+                padding: 1%;
+                display: inline;
+                float: left;
+                margin-right: 3%;
+                margin-top: 2%;
+                overflow-wrap: break-word;
+            }
+
+            .blue-bg {
+                background-color: #a5e1eb;
+            }
+
+            .yellow-bg {
+                background-color: #fef9d7;
+            }
+
+            .pink-bg {
+                background-color: #feb7c5;
+            }
+        </style>
+        <script>
+            window.addEventListener('load', init)
+
+            function init() {
+                displayNotes()
+                document.getElementById('noteForm').onsubmit = addNoteHandler
+                document.getElementById("noteTitle").focus()
+            }
+
+            function getNotes() {
+                try {
+                    return JSON.parse(localStorage.getItem('notes')) || []
+                } catch (error) {
+                    console.error('Error reading notes:', error)
+                    return []
+                }
+            }
+
+            function saveNotes(notes) {
+                try {
+                    localStorage.setItem('notes', JSON.stringify(notes));
+                } catch (error) {
+                    console.error('Error saving notes:', error)
+                    return false
+                }
+            }
+
+            function displayNotes() {
+                const notes = getNotes()
+                const notesDiv = document.getElementById('notes')
+                notesDiv.innerHTML = '';  // Clear existing notes display
+
+                if (!notes || notes.length == 0) {
+                    notesDiv.innerHTML = 'No note to show!'
+                    return
+                }
+
+
+                notes.forEach(note => {
+                    if (note.title && note.body) {
+                        // append data to html
+                        const noteDiv = createNoteDiv(note)
+                        notesDiv.appendChild(noteDiv);  // Append each note to the notes container
+                    }
+                });
+            }
+
+            function createNoteDiv(note) {
+                // constructs html view of a note
+                const noteDiv = document.createElement('div')
+                noteDiv.classList.add('note')
+                if (note.color == 'yellow') {
+                    noteDiv.classList.add('yellow-bg')
+                } else if (note.color == 'blue') {
+                    noteDiv.classList.add('blue-bg')
+                } else if (note.color == 'pink') {
+                    noteDiv.classList.add('pink-bg')
+                }
+                const title = document.createElement('h4');
+                title.textContent = note.title;
+                const body = document.createElement('p');
+                body.textContent = note.body;
+
+                const button = document.createElement('button')
+                button.textContent = 'Delete'
+                button.onclick = () => deleteNote(note.id)
+
+                noteDiv.appendChild(title)
+                noteDiv.appendChild(body)
+                noteDiv.appendChild(button)
+                return noteDiv
+            }
+
+
+
+            function deleteNote(noteId) {
+                // confirm before deleting
+                const isConfirmed = confirm(`Are you sure you want to delete this note?`)
+                if (isConfirmed) {
+                    const notes = getNotes()
+                    const updatedNotes = notes.filter(note => note.id != noteId);
+                    saveNotes(updatedNotes)
+                    // refresh notes
+                    displayNotes()
+                }
+            }
+
+
+
+            function addNoteHandler(e) {
+                const notes = getNotes()
+
+                e.preventDefault()
+                const formData = new FormData(e.target)
+                const noteColor = formData.get('noteColor')
+                const noteTitle = formData.get('noteTitle')
+                const noteBody = formData.get('noteBody')
+                const noteId = new Date().getTime()
+
+                if (isValid(noteTitle) && isValid(noteBody)) {
+                    const newNote = {
+                        color: noteColor,
+                        title: noteTitle,
+                        body: noteBody,
+                        id: noteId
+                    }
+                    notes.push(newNote)
+                } else {
+                    alert('invalid note!')
+                }
+                // save notes
+                saveNotes(notes)
+                // refresh note
+                displayNotes()
+
+                // reset the form
+                e.target.reset()
+            }
+
+            function isValid(str) {
+                if (str == null) {
+                    return false
+                } else if (str.trim() == '') {
+                    return false
+                } else {
+                    return true
+                }
+            }
+
+        </script>
+    </head>
+
+    <body>
+        <h1>Sticky Notes</h1>
+
+        <!-- <label for="shape">Shape (Circles or Squares)?: </label>
+        <select id="shape">
+            <option value="circles" selected>Circles</option>
+            <option value="squares">Squares</option>
+        </select> -->
+
+        <form id="noteForm">
+            <label for="noteColor">Color:</label>
+            <select name="noteColor" id="noteColor">
+                <option value="yellow" selected>yellow</option>
+                <option value="blue">blue</option>
+                <option value="pink">pink</option>
+            </select>
+            <input type="text" id="noteTitle" name="noteTitle" required placeholder="Note Title">
+            <p>
+                <textarea name="noteBody" id="noteBody" cols="35" rows="10" placeholder="Note Body" required></textarea>
+            </p>
+            <input type="submit" value="Add  Note" />
+        </form>
+
+        <div id="notes">
+
+        </div>
+    </body>
+
+</html>

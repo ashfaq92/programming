@@ -1,0 +1,5 @@
+vscode good shortcuts
+
+ctrl + p	quickly open an existing file
+ctrl + n	new file
+ctrl + d	find duplicate words in the file and duplicate cursors there
