@@ -1,0 +1,37 @@
+mas smart_home {
+  
+
+  agent pa1: personal_assistant.asl {
+    beliefs: preferred("reading", high)
+             preferred("watching", high)
+             preferred("sport", medium)
+             preferred("cooking", low)
+    join: room
+  }
+
+  agent pa2: personal_assistant.asl {
+    beliefs: preferred("reading", low)
+             preferred("watching", medium)
+             preferred("sport", medium)
+             preferred("cooking", high)
+    join: room
+  }
+
+  agent pa3: personal_assistant.asl {
+    beliefs: preferred("reading", medium)
+             preferred("watching", low)
+             preferred("sport", high)
+             preferred("cooking", medium)
+    join: room
+  }
+
+  agent rc : room_controller.asl { 
+      focus: room.hvac
+  } 
+
+  workspace room { 
+      artifact hvac: devices.HVAC(20) 
+  }
+
+  // TODO: implement organization
+}
