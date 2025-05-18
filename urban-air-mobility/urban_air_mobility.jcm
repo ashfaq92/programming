@@ -1,0 +1,33 @@
+mas urban_air_mobility {
+    
+    agent customer: customer.asl { 
+        join: smart_city 
+    }
+    agent scooter1: scooter.asl { 
+        join: smart_city 
+    }
+    agent scooter2: scooter.asl { 
+        join: smart_city 
+    }
+    agent airtaxi1: airtaxi.asl { 
+        join: smart_city 
+    }
+    agent airtaxi2: airtaxi.asl { 
+        join: smart_city 
+    }
+    agent weather: weather_monitor.asl { 
+        join: smart_city 
+    }
+    agent supervisor: supervisor.asl { 
+        join: smart_city 
+        focus: smart_city.chargerA
+    }
+
+    workspace smart_city {
+        artifact chargerA: Charger("A")
+        artifact chargerB: Charger("B")
+        artifact vertiportA: Vertiport("A")
+        artifact vertiportB: Vertiport("B")
+        artifact weather: Weather()
+    }
+}
