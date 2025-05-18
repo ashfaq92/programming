@@ -1,27 +1,23 @@
 import cartago.*;
 
 public class Charger extends Artifact {
-    private String location;
-    
-    void init(String loc) {
-        this.location = loc;
-        defineObsProperty("location", loc);
-        defineObsProperty("battery_level", 100);
+    void init(String id) {
+        defineObsProperty("id", id);
+        defineObsProperty("available", true);
     }
-    
+
     @OPERATION
-    void getBatteryLevel(String vehicle, OpFeedbackParam<Integer> level) {
-        // Simulate different battery levels for different vehicles
-        switch(vehicle) {
-            case "scooter1":
-                level.set(85);
-                break;
-            case "scooter2":
-                level.set(75);
-                break;
-            default:
-                level.set(100);
+    void reserve() {
+        ObsProperty avail = getObsProperty("available");
+        if (avail.booleanValue()) {
+            avail.updateValue(false);
+        } else {
+            failed("Already reserved");
         }
-        log("Checked battery level for " + vehicle + " at charger " + location);
+    }
+
+    @OPERATION
+    void release() {
+        getObsProperty("available").updateValue(true);
     }
 }

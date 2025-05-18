@@ -20,7 +20,14 @@ mas urban_air_mobility {
     }
     agent supervisor: supervisor.asl { 
         join: smart_city 
-        focus: smart_city.chargerA
+    }
+
+    agent s_cs1: s_cs1.asl {
+        join: smart_city
+    }
+
+    agent s_cs2: s_cs2.asl {
+        join: smart_city
     }
 
     workspace smart_city {

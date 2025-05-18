@@ -1,0 +1,29 @@
+<!-- org.xml -->
+<organisation>
+  <group name="uam-sos">
+    <structure>
+      <role name="supervisor" min="1" max="1"/>
+      <role name="ground-coordinator"/>
+      <role name="air-coordinator"/>
+      <role name="scooter"/>
+      <role name="air-taxi"/>
+      
+      <dependency id="d1">
+        <principal role="supervisor"/>
+        <dependent role="ground-coordinator"/>
+        <dependent role="air-coordinator"/>
+      </dependency>
+    </structure>
+
+    <scheme name="trip-coordination">
+      <goal name="fulfill_journey_request"/>
+      
+      <plan operator="sequence">
+        <subgoal id="receive_request" goal="fulfill_journey_request"/>
+        <subgoal id="analyze_constraints" goal="analyze_constraints"/>
+        <subgoal id="allocate_resources" goal="allocate_resources"/>
+        <subgoal id="monitor_execution" goal="monitor_execution"/>
+      </plan>
+    </scheme>
+  </group>
+</organisation>

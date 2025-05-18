@@ -1,19 +1,23 @@
-
-
-
-import cartago.Artifact;
-import cartago.OPERATION;
+import cartago.*;
 
 public class Vertiport extends Artifact {
-    private String name;
-
-    public void init(String name) {
-        this.name = name;
-        defineObsProperty("capacity", 2); // stub: 2 slots
+    void init(String id) {
+        defineObsProperty("id", id);
+        defineObsProperty("slot_available", true);
     }
 
     @OPERATION
-    public void reserveSlot() {
-        System.out.println("Vertiport " + name + ": slot reserved.");
+    void reserve_slot() {
+        ObsProperty slot = getObsProperty("slot_available");
+        if (slot.booleanValue()) {
+            slot.updateValue(false);
+        } else {
+            failed("Slot not available");
+        }
+    }
+
+    @OPERATION
+    void release_slot() {
+        getObsProperty("slot_available").updateValue(true);
     }
 }

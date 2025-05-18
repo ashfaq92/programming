@@ -1,0 +1,20 @@
+mas uam_2 {
+    
+    agent s_sos: s_sos.asl
+    agent cs_1: s_cs1.asl
+    agent cs_2: s_cs2.asl
+    agent customer: customer.asl
+    agent scooter1: scooter.asl
+    agent scooter2: scooter.asl
+    agent airtaxi1: airtaxi.asl
+    agent airtaxi2: airtaxi.asl
+    
+
+    workspace smart_city {
+        artifact environment: Environment()
+    }
+}
+
+
+
+// https://chatgpt.com/share/682a1ddd-84f4-800d-b933-7b92f1e1ab7e

@@ -1,11 +1,4 @@
-+plan_segment(Mode, From, To) <-
-    .print("Assigned to segment: ", Mode, ", ", From, " -> ", To).
-
-+execute_journey(Leg) <-
-    .print("Executing journey leg ", Leg);
-    .my_name(A);
-    .send(supervisor, tell, leg_finished(Leg));
-    .send(supervisor, tell, release_vehicle(A)).
-
-+abort_journey <-
-    .print("AirTaxi: Aborting journey due to weather disruption.").
++!execute_leg(From, To, Deadline, Leg) <-
+    .print(self, ": Executing air-taxi leg ", From, " -> ", To, " (", Leg, ")");
+    .wait(1000);
+    .send(s_cs2, tell, leg_done(self, From, To, Leg)).
