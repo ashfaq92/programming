@@ -1,10 +1,10 @@
 mas uam_sos {
     
-    agent c1 : customer.asl {
-        goals: travel
+    agent s_sos : s_sos.asl {
         join: smart_city
     }
-    agent s_sos : s_sos.asl {
+    agent c1 : customer.asl {
+        // goals: travel
         join: smart_city
     }
     agent s_cs1 : s_cs1.asl {

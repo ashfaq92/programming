@@ -10,4 +10,4 @@
     .wait(3000); // wait 3 seconds
     !storm.
 
-!start.
+// !start.

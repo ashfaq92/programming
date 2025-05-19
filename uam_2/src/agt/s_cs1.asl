@@ -6,6 +6,13 @@
 // Plan to handle incoming request messages
 +!kqml_received(Sender, request, scooter_request(From,To,Customer), Mid) <-
     .print("S-CS1: Received scooter request from ",Sender);
+    .send(s_sos, achieve, check_emergency(self));
+    .wait(500); // Wait for response
+    !dispatch_if_safe(From, To, Customer).
+
+// Only dispatch if no emergency
++!dispatch_if_safe(From, To, Customer) : not emergency_status(true) <-
+    .print("S-CS1: Conditions safe, finding scooter...");
     findVehicle("scooter",From,ID);
     if (ID == "none") {
         .print("S-CS1: No scooter available at ",From)
@@ -14,6 +21,19 @@
         .send(scooter1,achieve,travel(From,To,Customer));
         .print("S-CS1: Scooter ",ID," has been dispatched.")
     }.
+
+// Emergency condition detected
++!dispatch_if_safe(From, To, Customer) : emergency_status(true) <-
+    .print("S-CS1: EMERGENCY CONDITIONS! Cannot dispatch scooter.").
+
+// Handle emergency status update from SoS
++!kqml_received(Sender, tell, emergency_status(Status), Mid) <-
+    -+emergency_status(Status);
+    .print("S-CS1: Emergency status updated to: ", Status);
+    if (Status) {
+        .print("S-CS1: EMERGENCY DETECTED! Cancelling pending scooter assignments.")
+    }.
+
 
 // Plan to handle scooter completion messages
 +!kqml_received(Sender, inform, scooter_done(ID,Loc,Customer), Mid) <-
@@ -36,3 +56,11 @@
 // Plan to ignore self route updates
 +!update_route(NewRoute) <-
     .print("S-CS1: Ignoring update_route for self.").
+
+// Add to both supervisor files - emergency vehicle recall
++!recall_vehicles(Reason) <-
+    .print("Supervisor: EMERGENCY RECALL - ", Reason);
+    // Send stop command to vehicles
+    .send(scooter1, achieve, stop_travel(Reason)).  // For s_cs1
+    // OR 
+    .send(taxi1, achieve, stop_travel(Reason)).     // For s_cs2

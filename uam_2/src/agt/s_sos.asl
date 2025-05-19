@@ -5,51 +5,55 @@
 
 // Initial beliefs
 trip_completed(false).
+emergency(false).  // <-- Add this belief
 
-// Plan to handle travel requests 
+// Handle travel request
 +!kqml_received(Sender, achieve, travel_request(From,To), Mid) : not trip_completed(true) <-
-    .print("SoS: Planning trip from ",From," to ",To);
-    -+tripInfo(From,To,Sender);
-    getWeather(W);
-    if (W == "storm") {
-        .print("SoS: Storm detected. Using scooter for entire trip.");
-        .send(s_cs1,request,scooter_request(From,To,Sender))
-    } else {
-        .print("SoS: Clear weather. Scheduling scooter and air taxi.");
-        .send(s_cs1,request,scooter_request(From,"vertiport",Sender));
-        .send(s_cs2,request,taxi_request("vertiport",To,Sender))
-    }.
+    .print("SoS: Planning trip from ", From, " to ", To);
+    +tripInfo(From,To,Sender);
+    -+emergency(false);  // Reset emergency status at start
+    .send(s_cs1, request, scooter_request(From, "vertiport", Sender)).
 
-// Plan to handle KQML scooter completion
-+!kqml_received(Sender, inform, scooter_done(ID,Loc,Customer), Mid) : not trip_completed(true) <-
+// Handle scooter done
++!kqml_received(Sender, inform, scooter_done(ID,Loc,Customer), Mid) : emergency(true) <-
+    .print("SoS: Ignoring scooter completion - emergency active").
+
+// Handle scooter done (original plan for non-emergency)
++!kqml_received(Sender, inform, scooter_done(ID,Loc,Customer), Mid) : not trip_completed(true) & not emergency(true) <-
     ?tripInfo(From,Dest,Customer);
     .print("SoS: Scooter ", ID, " finished at ", Loc);
     if (Loc == Dest) {
         .print("SoS: Customer has arrived at destination by scooter.");
-        -+trip_completed(true);
-        .send(Customer,inform,trip_complete)
+        +trip_completed(true);
+        .send(Customer, inform, trip_complete)
     } else {
-        // Only send taxi request if trip is not already complete
-        if (not trip_completed(true)) {
-            .print("SoS: Requesting air taxi from ", Loc, " to ", Dest);
-            .send(s_cs2,request,taxi_request(Loc,Dest,Customer))
-        }
+        .print("SoS: Requesting air taxi from ", Loc, " to ", Dest);
+        .send(s_cs2, request, taxi_request(Loc, Dest, Customer))
     }.
 
-// Plan to handle KQML taxi completion
-+!kqml_received(Sender, inform, taxi_done(ID,Loc,Customer), Mid) : not trip_completed(true) <-
+// Handle taxi done
++!kqml_received(Sender, inform, taxi_done(ID,Loc,Customer), Mid) : not trip_completed(true) & not emergency(true) <-
     .print("SoS: Taxi ", ID, " finished at ", Loc);
-    -+trip_completed(true);
-    .send(Customer,inform,trip_complete).
+    +trip_completed(true);
+    .send(Customer, inform, trip_complete).
 
+// NEW: Check if emergency is active
++!check_emergency(Reply) <-
+    ?emergency(Status);
+    .send(Reply, tell, emergency_status(Status)).
 
-// Plan to handle replan requests from supervisors
-+!kqml_received(Sender, request, request_replan(VehicleID, Constraints), Mid) <-
-    .print("SoS: Replan requested for ", VehicleID, " due to ", Constraints);
-    // For demo: just notify supervisor to update route
-    .send(Sender, inform, update_route(VehicleID, "reroute_due_to_storm")).
+// Storm cancellation - WITH vehicle recall
++!kqml_received(Sender, request, request_replan(VehicleID, [storm(Zone,Severity)]), Mid) <-
+    .print("SoS: EMERGENCY! Storm detected at ", Zone, ". CANCELLING ALL TRAVEL!");
+    -+emergency(true);
+    +trip_completed(true);
+    
+    // ADD THESE LINES - send recall commands to both supervisors
+    .send(s_cs1, achieve, recall_vehicles("Storm emergency"));
+    .send(s_cs2, achieve, recall_vehicles("Storm emergency"));
+    
+    .send(c1, inform, trip_cancelled("Storm emergency")).
 
-
-// Plan to handle vehicle status updates
+// Handle vehicle status updates
 +!kqml_received(Sender, inform, status_update(Status, Info), Mid) <-
     .print("SoS: Vehicle ", Sender, " status: ", Status, " (", Info, ")").
