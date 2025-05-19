@@ -1,17 +1,29 @@
-mas uam_2 {
+mas uam_sos {
     
-    agent s_sos: s_sos.asl
-    agent cs_1: s_cs1.asl
-    agent cs_2: s_cs2.asl
-    agent customer: customer.asl
-    agent scooter1: scooter.asl
-    agent scooter2: scooter.asl
-    agent airtaxi1: airtaxi.asl
-    agent airtaxi2: airtaxi.asl
+    agent c1 : customer.asl {
+        goals: travel
+        join: smart_city
+    }
+    agent s_sos : s_sos.asl {
+        join: smart_city
+    }
+    agent s_cs1 : s_cs1.asl {
+        join: smart_city
+    }
+    agent s_cs2 : s_cs2.asl {
+        join: smart_city
+    }
+    agent scooter1 : scooter.asl {
+        join: smart_city
+    }
+    agent taxi1 : airtaxi.asl {
+        join: smart_city
+    }
     
 
     workspace smart_city {
-        artifact environment: Environment()
+        artifact transportEnv : TransportEnvironment()
+        agents: c1, s_cs1, s_cs2, s_sos, scooter1, taxi1
     }
 }
 
