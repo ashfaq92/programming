@@ -6,6 +6,7 @@
 // Plan to handle a travel command from S-CS2.
 +!travel(From,To,Customer)[source(s_cs2)] <-
     .print("Taxi: Starting travel from ",From," to ",To);
+    .wait(4000); // <-- Add this line to simulate travel time (4 seconds)
     moveVehicle("taxi1",To,Success);
     if ( Success ) {
         .print("Taxi: Arrived at ",To);
@@ -15,3 +16,10 @@
         .print("Taxi: Unable to move");
         .send(s_cs2,inform,taxi_done("taxi1",From,Customer))
     }.
+
+
+
+// Plan to handle route update
++!update_route(NewRoute) <-
+    .print("Vehicle: Rerouting to ", NewRoute);
+    .send(s_sos, inform, status_update("rerouted", NewRoute)).

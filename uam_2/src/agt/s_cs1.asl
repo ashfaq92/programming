@@ -19,3 +19,20 @@
 +!kqml_received(Sender, inform, scooter_done(ID,Loc,Customer), Mid) <-
     .print("S-CS1: Scooter ",ID," delivered customer to ",Loc);
     .send(s_sos,inform,scooter_done(ID,Loc,Customer)).
+
+
+// Plan to handle weather alerts
++!kqml_received(Sender, inform, weather_alert(Zone, Severity), Mid) <-
+    .print("Supervisor: Weather alert received for ", Zone, " (", Severity, ")");
+    // For demo: always request replan for the current vehicle
+    .send(s_sos, request, request_replan(self, [storm(Zone,Severity)])).
+
+
+// Plan to handle route update from SoS
++!kqml_received(Sender, inform, update_route(VehicleID, NewRoute), Mid) <-
+    .print("Supervisor: Updating route for ", VehicleID, " to ", NewRoute);
+    .send(scooter1, achieve, update_route(NewRoute)).
+
+// Plan to ignore self route updates
++!update_route(NewRoute) <-
+    .print("S-CS1: Ignoring update_route for self.").

@@ -41,3 +41,15 @@ trip_completed(false).
     .print("SoS: Taxi ", ID, " finished at ", Loc);
     -+trip_completed(true);
     .send(Customer,inform,trip_complete).
+
+
+// Plan to handle replan requests from supervisors
++!kqml_received(Sender, request, request_replan(VehicleID, Constraints), Mid) <-
+    .print("SoS: Replan requested for ", VehicleID, " due to ", Constraints);
+    // For demo: just notify supervisor to update route
+    .send(Sender, inform, update_route(VehicleID, "reroute_due_to_storm")).
+
+
+// Plan to handle vehicle status updates
++!kqml_received(Sender, inform, status_update(Status, Info), Mid) <-
+    .print("SoS: Vehicle ", Sender, " status: ", Status, " (", Info, ")").

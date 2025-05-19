@@ -19,6 +19,10 @@ mas uam_sos {
     agent taxi1 : airtaxi.asl {
         join: smart_city
     }
+
+    agent wma : wma.asl {
+        join: smart_city
+    }
     
 
     workspace smart_city {
