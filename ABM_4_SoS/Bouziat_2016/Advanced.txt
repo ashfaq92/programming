@@ -1,0 +1,297 @@
+1. Enhanced Effect Calculation
+-----------------------------
+class Functionality:
+    def __init__(self, name: str, duration: float, resource_effects: dict = None, 
+                 network_effects: dict = None):
+        """
+        resource_effects: effects on self
+        network_effects: effects on neighbors (for cooperative actions)
+        """
+        self.name = name
+        self.duration = duration
+        self.resource_effects = resource_effects or {}
+        self.network_effects = network_effects or {}  # New: effects on others
+
+    def __repr__(self):
+        return f"Functionality(name={self.name}, duration={self.duration})"
+
+    def has_effect_on_system(self, system):
+        """Check if this functionality affects the given system"""
+        # Check both self effects and network effects
+        all_effects = {**self.resource_effects, **self.network_effects}
+        for resource_type in all_effects.keys():
+            for resource in system.R:
+                if resource.type == resource_type:
+                    return True
+        return False
+    
+    def calculate_effect(self, system, is_neighbor=False):
+        """
+        Calculate the effect of this functionality on system's criticality
+        is_neighbor: True if calculating effect on a neighbor system
+        """
+        if not self.has_effect_on_system(system):
+            return 0.0
+        
+        total_effect = 0.0
+        effects_to_use = self.network_effects if is_neighbor else self.resource_effects
+        
+        for resource_type, change in effects_to_use.items():
+            for resource in system.R:
+                if resource.type == resource_type:
+                    # Calculate effect based on current resource state and goals
+                    current_gap = 0
+                    for goal in system.Grs:
+                        if goal.type == resource_type:
+                            current_gap = goal.value - resource.quantity
+                            break
+                    
+                    # Effect is stronger when resource is more critical
+                    if current_gap > 0:  # Need more of this resource
+                        effect_multiplier = 1.0 + (current_gap / 100.0)  # Scale effect
+                    else:
+                        effect_multiplier = 1.0
+                    
+                    # Positive change reduces criticality, negative increases it
+                    total_effect -= change * 0.01 * effect_multiplier
+        
+        return total_effect
+
+
+
+2. Enhanced Cooperative Decision with Network Effects
+-----------------------------
+def calculate_anticipated_criticality(self, system_sj, functionality_f, target_time):
+    """
+    Enhanced Algorithm 2: Calculate anticipated criticality with network effects
+    """
+    # Get current and previous criticality
+    current_crit = system_sj.get_criticality()
+    previous_crit = system_sj.get_criticality(max(0, system_sj.current_time - 1))
+    
+    # Calculate slope (a) and intercept (b)
+    b = previous_crit
+    t0 = max(0, system_sj.current_time - 1)
+    
+    if not functionality_f.has_effect_on_system(system_sj):
+        # No effect, use natural trend
+        a = current_crit - previous_crit
+    else:
+        # Include effect of functionality (considering if it's a neighbor)
+        is_neighbor = (system_sj != self)
+        effect = functionality_f.calculate_effect(system_sj, is_neighbor)
+        a = (current_crit + effect) - previous_crit
+    
+    # Linear extrapolation: C'(t) = a * (t - t0) + b
+    time_diff = target_time - t0
+    anticipated_crit = a * time_diff + b
+    return max(0.0, min(1.0, anticipated_crit))
+
+def cooperative_decision_with_reasoning(self):
+    """
+    Enhanced cooperative decision with detailed reasoning
+    """
+    if not self.F:
+        return None, "No functionalities available"
+    
+    functionality_analysis = {}
+    
+    # Analyze each functionality
+    for f in self.F:
+        analysis = {
+            'deltas': {},
+            'self_benefit': 0.0,
+            'network_benefit': 0.0,
+            'max_harm': 0.0
+        }
+        
+        t_f = self.current_time + f.duration
+        
+        # Calculate self-benefit
+        self_current_crit = self.get_criticality()
+        self_anticipated_crit = self.calculate_anticipated_criticality(self, f, t_f)
+        analysis['self_benefit'] = self_current_crit - self_anticipated_crit
+        
+        # Calculate network effects
+        total_network_benefit = 0.0
+        max_individual_harm = -float('inf')
+        
+        for sj in self.L:
+            anticipated_crit = self.calculate_anticipated_criticality(sj, f, t_f)
+            current_crit = sj.get_criticality()
+            delta = anticipated_crit - current_crit
+            
+            analysis['deltas'][sj] = delta
+            neighbor_benefit = -delta  # Negative delta means benefit
+            total_network_benefit += neighbor_benefit
+            max_individual_harm = max(max_individual_harm, delta)
+        
+        analysis['network_benefit'] = total_network_benefit
+        analysis['max_harm'] = max_individual_harm
+        functionality_analysis[f] = analysis
+    
+    # Decision logic: minimize max harm, then maximize network benefit
+    best_f = None
+    best_analysis = None
+    min_max_harm = float('inf')
+    
+    for f, analysis in functionality_analysis.items():
+        if analysis['max_harm'] < min_max_harm:
+            min_max_harm = analysis['max_harm']
+            best_f = f
+            best_analysis = analysis
+        elif analysis['max_harm'] == min_max_harm:
+            # Tie-breaker: choose action with more network benefit
+            if analysis['network_benefit'] > best_analysis['network_benefit']:
+                best_f = f
+                best_analysis = analysis
+    
+    # Generate reasoning
+    if best_f:
+        reasoning = f"Chose {best_f.name}: "
+        reasoning += f"Max harm={best_analysis['max_harm']:.3f}, "
+        reasoning += f"Network benefit={best_analysis['network_benefit']:.3f}, "
+        reasoning += f"Self benefit={best_analysis['self_benefit']:.3f}"
+    else:
+        reasoning = "No valid action found"
+    
+    return best_f, reasoning
+
+
+3. Advanced Demo with Network Effects
+-----------------------------
+from component_system import ComponentSystem
+from resource import Resource
+from goals import GoalResource
+from functionality import Functionality
+
+def create_advanced_scenario():
+    """Create scenario with explicit network effects"""
+    
+    medic = ComponentSystem("Medic_Bot")
+    scout = ComponentSystem("Scout_Bot")
+    support = ComponentSystem("Support_Bot")
+    
+    # Resources (same as before)
+    medic.add_resource(Resource("energy", 85))
+    medic.add_resource(Resource("health", 45))
+    medic.add_resource(Resource("repair_kits", 3))
+    
+    scout.add_resource(Resource("energy", 20))
+    scout.add_resource(Resource("health", 90))
+    scout.add_resource(Resource("intel", 0))
+    
+    support.add_resource(Resource("energy", 95))
+    support.add_resource(Resource("health", 70))
+    support.add_resource(Resource("supplies", 5))
+    
+    # Goals (same as before)
+    medic.add_goal_resource(GoalResource("energy", 80, "EQ", 1))
+    medic.add_goal_resource(GoalResource("health", 90, "EQ", 3))
+    medic.add_goal_resource(GoalResource("repair_kits", 2, "EQ", 2))
+    
+    scout.add_goal_resource(GoalResource("energy", 80, "EQ", 3))
+    scout.add_goal_resource(GoalResource("health", 85, "EQ", 1))
+    scout.add_goal_resource(GoalResource("intel", 10, "EQ", 2))
+    
+    support.add_goal_resource(GoalResource("energy", 90, "EQ", 1))
+    support.add_goal_resource(GoalResource("health", 80, "EQ", 2))
+    support.add_goal_resource(GoalResource("supplies", 3, "EQ", 2))
+    
+    # Enhanced functionalities with network effects
+    functionalities = {
+        "heal_others": Functionality("heal_others", 3.0, 
+                                   resource_effects={"repair_kits": -1}, 
+                                   network_effects={"health": 20}),
+        "share_energy": Functionality("share_energy", 1.0,
+                                    resource_effects={"energy": -10},
+                                    network_effects={"energy": 15}),
+        "broadcast_intel": Functionality("broadcast_intel", 2.0,
+                                       resource_effects={"energy": -5},
+                                       network_effects={"intel": 3}),
+        "repair_self": Functionality("repair_self", 4.0,
+                                   resource_effects={"health": 10, "energy": -5}),
+        "emergency_rest": Functionality("emergency_rest", 6.0,
+                                      resource_effects={"energy": 30, "health": 5})
+    }
+    
+    # Add functionalities
+    medic.add_functionality(functionalities["heal_others"])
+    medic.add_functionality(functionalities["share_energy"])
+    medic.add_functionality(functionalities["repair_self"])
+    medic.add_functionality(functionalities["emergency_rest"])
+    
+    scout.add_functionality(functionalities["broadcast_intel"])
+    scout.add_functionality(functionalities["share_energy"])
+    scout.add_functionality(functionalities["repair_self"])
+    scout.add_functionality(functionalities["emergency_rest"])
+    
+    support.add_functionality(functionalities["heal_others"])
+    support.add_functionality(functionalities["share_energy"])
+    support.add_functionality(functionalities["emergency_rest"])
+    
+    # Initialize criticalities
+    for robot in [medic, scout, support]:
+        robot.initialize_criticality(3.0)
+    
+    # Create network
+    medic.add_link(scout)
+    medic.add_link(support)
+    scout.add_link(medic)
+    scout.add_link(support)
+    support.add_link(medic)
+    support.add_link(scout)
+    
+    return [medic, scout, support]
+
+def run_enhanced_simulation(robots, steps=2):
+    """Run simulation with reasoning output"""
+    
+    for step in range(steps):
+        print(f"\n{'='*25} STEP {step + 1} {'='*25}")
+        
+        # Show current state
+        print("Current State:")
+        for robot in robots:
+            criticality = robot.get_criticality()
+            print(f"  {robot.name}: Criticality = {criticality:.3f}")
+            for resource in robot.R:
+                print(f"    {resource.type}: {resource.quantity}")
+        
+        # Make decisions with reasoning
+        print("\nCooperative Decisions with Reasoning:")
+        decisions = {}
+        for robot in robots:
+            chosen_action, reasoning = robot.cooperative_decision_with_reasoning()
+            decisions[robot] = chosen_action
+            print(f"  {robot.name}: {reasoning}")
+        
+        # Apply effects
+        print("\nApplying Effects...")
+        for robot, action in decisions.items():
+            if action:
+                # Apply self effects
+                for resource_type, change in action.resource_effects.items():
+                    for resource in robot.R:
+                        if resource.type == resource_type:
+                            old_qty = resource.quantity
+                            resource.quantity = max(0, resource.quantity + change)
+                            print(f"    {robot.name}: {resource_type} {old_qty} -> {resource.quantity}")
+                
+                # Apply network effects to neighbors
+                for neighbor in robot.L:
+                    for resource_type, change in action.network_effects.items():
+                        for resource in neighbor.R:
+                            if resource.type == resource_type:
+                                old_qty = resource.quantity
+                                resource.quantity = max(0, resource.quantity + change)
+                                print(f"    {neighbor.name} (from {robot.name}): {resource_type} {old_qty} -> {resource.quantity}")
+                
+                # Update criticality
+                robot.update_criticality(robot.calculate_criticality(3.0))
+
+if __name__ == "__main__":
+    print("=== ADVANCED COOPERATIVE DECISION MAKING DEMO ===")
+    
+    robots = create_advanced_scenario()
+    run_enhanced_simulation(robots, steps=2)

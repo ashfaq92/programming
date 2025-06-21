@@ -1,5 +1,5 @@
 import mesa
-import helper_funcs
+import utils
 
 class MoneyAgent(mesa.Agent):
     """An agent with fixed initial wealth"""
@@ -40,7 +40,7 @@ class MoneyModel(mesa.Model):
 
         # collect the output
         self.datacollector = mesa.DataCollector(
-            model_reporters={"Gini": helper_funcs.compute_gini},
+            model_reporters={"Gini": utils.compute_gini},
             agent_reporters={"Wealth": "wealth", "Ethnicity": "ethnicity"}
         )
     

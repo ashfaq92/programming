@@ -1,6 +1,6 @@
-from ComponentSystem import ComponentSystem
-from Resource import Resource
-from Goals import GoalResource
+from component_system import ComponentSystem
+from resource import Resource
+from goals import GoalResource
 import helper_funcs
 import json
 
@@ -24,10 +24,10 @@ if __name__ == "__main__":
 
     # Add goals
     energy_goal = GoalResource("energy", 80, "EQ", 2)  # get energy level at least 80%
-    robot_system.add_resource_goal(energy_goal)
+    robot_system.add_goal_resource(energy_goal)
 
     health_goal = GoalResource("health", 90, "EQ", 2)
-    robot_system.add_resource_goal(health_goal)
+    robot_system.add_goal_resource(health_goal)
 
     print(robot_system.__repr__(verbose=True))
     # calculating criticality
