@@ -97,100 +97,14 @@ The robot agent chooses the most appropriate action based on its current *state*
 - Color Bonus: +1 additional energy for same-color deposits
 - Net Same-Color Gain: +3 energy per successful deposit
 
-### Key Findings
+### Behavior Described in the Paper
 
-#### Statistical Results
-- **Final Boxes**: Mean=418.8, Min=17, Max=2,502
-- **Population Variance**: High variability across runs indicating sensitivity to initial conditions
-- **System Stability**: Consistent three-phase behavioral patterns across all runs
+1. The mean battery level of the robots rapidly decreases around the 500th to 1000th simulation tick but never reaches zero. Up to the 10,000th tick, the mean battery level remains slightly above 50.
 
-#### Robot Population Dynamics: Rapid decline followed by stabilization
-- *Initial Population*: 90 robots across all runs
-- *Decline Phase*: Steep population drop between steps 200-1,000
-- *Stable Phase*: Surviving populations plateau at 20-40 robots
-- *Extinction Variance*: Some runs show complete extinction, others maintain stable survivor populations
+2. The number of boxes in the environment gradually increases over time.
 
-#### Three-Phase Energy Level Convergence
-1. Initial Decline (Steps 0-50)
-   - Average energy drops as robots expend energy exploring without immediate rewards
+3. The number of active (alive) robots declines following a similar trend to the mean battery level, suggesting some correlation between the two. However, the number of active robots never reaches zero; approximately 5 to 10 robots remain in the environment up to the 10,000th simulation cycle.
 
-2. Recovery Phase (Steps 50-200)
-   - Energy levels rise as robots begin successful box collection
-   - Demonstrates learning and adaptation
-
-3. Equilibrium Phase (Steps 200+)
-   - Energy levels stabilize at sustainable thresholds
-   - Surviving robots maintain consistent energy through efficient foraging
-   - *Key Insight*: Stable energy represents minimum viable fitness level
-
-#### 3. Resource Accumulation Dynamics
-- Early Phase: Steady state around 10-15 boxes (collection ≈ generation)
-- Transition Phase: Gradual increase as robot population declines
-- Late Phase: Linear growth reaching 2,000+ boxes (generation > collection)
-- Maximum Capacity: Grid supports ~2,497 boxes with movement buffer
-
-### Theoretical Validation
-
-#### Adaptive Multi-Agent System (AMAS) Theory Confirmation
-
-1. *Natural Selection*: Less efficient robots are eliminated
-2. *Fitness Convergence*: Surviving robots demonstrate similar efficiency levels
-3. *Resource Competition*: Limited resources create survival pressure
-4. *Emergent Optimization*: System self-organizes without central control
-
-#### Energy Economics Analysis: Sustainability Threshold
-- Robots must find and deposit 1 box per ~10-15 moves to survive
-- Perception limitation (radius = 3) creates realistic foraging pressure
-- Same-color preference (100% observed) maximizes energy efficiency
-
-### Multi-Run Statistical Analysis
-
-#### Population Survival Metrics
-- **Mean Survival Time**: 400-800 steps (varies by run)
-- **Survivor Range**: 0-40 robots per run
-- **Consistency**: All runs show similar three-phase pattern
-- **Variability**: Initial conditions significantly affect final outcomes
-
-#### Performance Consistency
-- **Box Collection**: 80-120 boxes deposited per run before major population decline
-- **Same-Color Efficiency**: 100% same-color deposits across all runs
-- **Spatial Distribution**: Nest positioning affects survival rates
-
-## System Behavior Insights
-
-### 1. Emergent Cooperation
-- Robots don't explicitly communicate but show coordinated resource utilization
-- Spatial distribution naturally optimizes to reduce competition
-
-### 2. Adaptive Learning
-- Energy management strategies emerge without programming
-- Successful foraging patterns develop through selection pressure
-
-### 3. Environmental Adaptation
-- Different nest configurations produce different survival outcomes
-- Resource scarcity drives behavioral optimization
+4. Even at the 0th simulation cycle, there are about 10 to 20 boxes already present in the environment.
 
 
-### Performance Optimization
-- Perception limitation reduces computational complexity
-- Efficient cell-based spatial indexing
-- Minimal memory footprint per agent
-
-## Conclusions
-
-### Primary Findings
-
-1. **The CoCaRo simulation successfully demonstrates AMAS principles** with clear phases of exploration, adaptation, and equilibrium.
-
-2. **Energy level convergence validates the theoretical model** - surviving agents maintain energy levels at the minimum viable threshold for their environment.
-
-3. **Population dynamics show realistic selection pressure** - rapid elimination of inefficient agents followed by stable survivor populations.
-
-4. **Resource accumulation patterns confirm system balance** - collection rates adjust naturally to available agent capacity.
-
-### Implications for Multi-Agent System Design
-
-- **Finite resources create effective selection pressure** for agent optimization
-- **Local perception limitations enhance realistic behavior** and computational efficiency  
-- **Energy-based fitness functions produce emergent cooperation** without explicit coordination mechanisms
-- **Spatial environment configuration significantly impacts** system outcomes 

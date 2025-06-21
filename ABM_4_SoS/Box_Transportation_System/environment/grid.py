@@ -1,4 +1,4 @@
-from Box_Transportation_System import utils
+import utils
 from .box import Box
 from .cell import Cell
 from .nest import Nest
@@ -14,7 +14,8 @@ class Grid:
         self.robots = []
         # Initializations
         self._initialize_cells()
-        self._initialize_nests_randomly()
+        # self._initialize_nests_randomly()
+        self._initialize_nests_fixed_equidistant()
 
     def _initialize_cells(self):
         self.cells = [[Cell(x,y) for x in range(self.width)] for y in range(self.height)]  #2D grid
@@ -41,7 +42,27 @@ class Grid:
             attempts += 1
         
         if placed_nests < len(colors):
-            raise ValueError(f"Warning: Could only place {placed_nests} out of {len(colors)} nests")
+            raise ValueError(f"Could only place {placed_nests} out of {len(colors)} nests")
+
+    def _initialize_nests_fixed_equidistant(self):
+        """Initialize nests at predetermined equidistant positions"""
+        colors = utils.COLORS.copy()
+        utils.seeded_rand.shuffle(colors)  # Still randomize color assignment
+
+        # Predetermined positions forming equilateral triangle (for 50x50 grid)
+        fixed_positions = [
+            (25, 15),  # Top
+            (15, 35),  # Bottom-left
+            (35, 35)  # Bottom-right
+        ]
+
+        for i, (x, y) in enumerate(fixed_positions):
+            if self.cells[y][x].is_empty():
+                nest = Nest(colors[i], x, y)
+                self.cells[y][x].add_nest(nest)
+                self.nests.append(nest)
+            else:
+                raise ValueError(f"Predetermined nest position ({x}, {y}) is not empty!")
 
     def initialize_boxes(self, n):
         """Initialize n boxes randomly on the grid"""

@@ -1,11 +1,12 @@
 from environment.grid import Grid
-from robot_selfish import SelfishRobot
+from robot_non_cooperative import RobotNonCooperative
 import utils
 import matplotlib.pyplot as plt
 import numpy as np
+from environment.box import Box
 
 class Simulation:
-    def __init__(self, num_robots=90, initial_boxes=0):
+    def __init__(self, initial_boxes, num_robots):
         # Use proper grid size from utils or default 50x50
         self.grid = Grid(width=50, height=50)  # Standard grid size
         self.step_count = 0
@@ -42,7 +43,7 @@ class Simulation:
         }
     
     def _create_robots(self, num_robots):
-        """Create selfish robots with equal distribution of colors"""
+        """Create non-cooperative robots with equal distribution of colors"""
         if num_robots != 90:
             print(f"Warning: Expected 90 robots, got {num_robots}")
         
@@ -59,7 +60,7 @@ class Simulation:
                 robots_to_create += 1
             
             for j in range(robots_to_create):
-                robot = SelfishRobot(
+                robot = RobotNonCooperative(
                     e=utils.INITIAL_ENERGY,  # 300 as specified
                     c=color,
                     grid=self.grid
@@ -76,33 +77,35 @@ class Simulation:
     
     def _generate_box_if_needed(self):
         """Generate a new box every 3 time units"""
-        if self.step_count - self.last_box_generation >= self.box_generation_interval:
-            # Generate a new box with random color
-            color = utils.seeded_rand.choice(utils.COLORS)
+        if self.step_count % 3 == 0:
+            # Calculate occupancy rate
+            total_entities = len(self.grid.boxes) + len([r for r in self.grid.robots if r.energy > 0])
+            occupancy_rate = total_entities / (self.grid.width * self.grid.height)
             
-            # Find an empty cell for the new box
-            attempts = 0
-            max_attempts = 100
+            # Stop generation if too crowded
+            if occupancy_rate < 0.50:  # Keep 40% free space
+                self._try_place_new_box()
+
+    def _try_place_new_box(self):
+        """Attempt to place a new box, fail silently if grid is full"""
+        color = utils.seeded_rand.choice(utils.COLORS)
+        
+        # Try up to 100 random positions
+        for _ in range(100):
+            x = utils.seeded_rand.randint(0, self.grid.width - 1)
+            y = utils.seeded_rand.randint(0, self.grid.height - 1)
             
-            while attempts < max_attempts:
-                x = utils.seeded_rand.randint(0, self.grid.width - 1)
-                y = utils.seeded_rand.randint(0, self.grid.height - 1)
-                
-                cell = self.grid.cells[y][x]
-                if cell.box is None and cell.robot is None:  # Cell is free (can have nest)
-                    from environment.box import Box
-                    box = Box(color)
-                    box.set_status("INITIALIZED")
-                    cell.add_box(box)
-                    self.grid.boxes.append(box)
-                    self.stats['boxes_generated'] += 1
-                    self.last_box_generation = self.step_count
-                    break
-                
-                attempts += 1
-            
-            if attempts >= max_attempts:
-                print(f"Could not place new box at step {self.step_count}") and utils.DEBUG_MODE
+            cell = self.grid.cells[y][x]
+            if cell.is_empty():
+                box = Box(color)
+                box.set_status("INITIALIZED")
+                cell.add_box(box)
+                self.grid.boxes.append(box)
+                self.stats['boxes_generated'] += 1
+                # print(f"step: {self.step_count} Box generated at ({x}, {y}) (color: {color})") and utils.DEBUG_MODE
+                return  # Success - exit
+        print(f"Failed to place box (color: {color})") and utils.DEBUG_MODE
+        # Failed to place after 100 attempts - grid is full, fail silently
     
     def _record_time_series(self):
         """Record data for time series plots"""
@@ -118,7 +121,10 @@ class Simulation:
         self.time_series['alive_robots'].append(len(active_robots))  # <-- add this
     
     def step(self):
-        """Execute one simulation step"""        
+        """Execute one simulation step"""
+        if self.step_count >= self.max_steps:
+            return False
+
         # Randomize robot order each step to simulate concurrent execution
         active_robots = [robot for robot in self.grid.robots if robot.energy > 0]
         utils.seeded_rand.shuffle(active_robots)  # Random order each step
@@ -145,61 +151,72 @@ class Simulation:
         self.stats['robot_energies'] = [robot.energy for robot in self.grid.robots]
         self.stats['total_energy_consumed'] = sum(utils.INITIAL_ENERGY - robot.energy for robot in self.grid.robots)
         
-    def _should_continue(self):
-        """Check if simulation should continue"""
-        if self.step_count >= self.max_steps:
-            return False
-        
-        # Stop if all robots are out of energy
-        if all(robot.energy <= 0 for robot in self.grid.robots):
-            return False
-        
-        return True
-        # return self.step_count < self.max_steps
+
     
     def plot_results(self):
-        """Generate three plots: mean battery, number of boxes, and boxes deposited"""
-        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+        """Generate sensitive plots that show every fluctuation"""
+        # ✅ Larger figure with higher DPI for detail
+        fig, axes = plt.subplots(2, 2, figsize=(20, 16))
         
         # Plot 1: Mean Battery Level over Time
         axes[0, 0].plot(self.time_series['steps'], self.time_series['mean_battery'], 
-                    color='blue', linewidth=2)
-        axes[0, 0].set_title('Mean Battery Level of Robots Over Time')
-        axes[0, 0].set_xlabel('Time Steps')
-        axes[0, 0].set_ylabel('Mean Battery Level')
+                    color='blue', linewidth=0.8, alpha=0.9)  # ✅ Thinner line, less smoothing
+        axes[0, 0].set_title('Mean Battery Level of Robots Over Time', fontsize=14)
+        axes[0, 0].set_xlabel('Time Steps', fontsize=12)
+        axes[0, 0].set_ylabel('Mean Battery Level', fontsize=12)
         axes[0, 0].grid(True, alpha=0.3)
         axes[0, 0].set_ylim(0, utils.MAX_ENERGY)
+        axes[0, 0].set_xticks(range(0, 10001, 1000))
+        # ✅ Enable minor ticks for finer detail
+        axes[0, 0].minorticks_on()
+        axes[0, 0].grid(True, which='minor', alpha=0.1)
         
         # Plot 2: Number of Boxes on Grid over Time
         axes[0, 1].plot(self.time_series['steps'], self.time_series['num_boxes'], 
-                    color='red', linewidth=2)
-        axes[0, 1].set_title('Number of Boxes on Grid Over Time')
-        axes[0, 1].set_xlabel('Time Steps')
-        axes[0, 1].set_ylabel('Number of Boxes')
+                    color='red', linewidth=0.8, alpha=0.9)  # ✅ Sensitive line
+        axes[0, 1].set_title('Number of Boxes on Grid Over Time', fontsize=14)
+        axes[0, 1].set_xlabel('Time Steps', fontsize=12)
+        axes[0, 1].set_ylabel('Number of Boxes', fontsize=12)
         axes[0, 1].grid(True, alpha=0.3)
+        axes[0, 1].set_xticks(range(0, 10001, 1000))
+        axes[0, 1].minorticks_on()
+        axes[0, 1].grid(True, which='minor', alpha=0.1)
         
         # Plot 3: Boxes Deposited over Time
         axes[1, 0].plot(self.time_series['steps'], self.time_series['boxes_deposited'], 
-                    color='green', linewidth=2)
-        axes[1, 0].set_title('Cumulative Boxes Deposited Over Time')
-        axes[1, 0].set_xlabel('Time Steps')
-        axes[1, 0].set_ylabel('Boxes Deposited')
+                    color='green', linewidth=0.8, alpha=0.9)  # ✅ Show every step
+        axes[1, 0].set_title('Cumulative Boxes Deposited Over Time', fontsize=14)
+        axes[1, 0].set_xlabel('Time Steps', fontsize=12)
+        axes[1, 0].set_ylabel('Boxes Deposited', fontsize=12)
         axes[1, 0].grid(True, alpha=0.3)
+        axes[1, 0].set_xticks(range(0, 10001, 1000))
+        axes[1, 0].minorticks_on()
+        axes[1, 0].grid(True, which='minor', alpha=0.1)
         
         # Plot 4: Alive Robots over Time
         axes[1, 1].plot(self.time_series['steps'], self.time_series['alive_robots'], 
-                    color='purple', linewidth=2)
-        axes[1, 1].set_title('Number of Alive Robots Over Time')
-        axes[1, 1].set_xlabel('Time Steps')
-        axes[1, 1].set_ylabel('Alive Robots')
+                    color='purple', linewidth=0.8, alpha=0.9)  # ✅ Capture every death
+        axes[1, 1].set_title('Number of Alive Robots Over Time', fontsize=14)
+        axes[1, 1].set_xlabel('Time Steps', fontsize=12)
+        axes[1, 1].set_ylabel('Alive Robots', fontsize=12)
         axes[1, 1].grid(True, alpha=0.3)
+        axes[1, 1].set_xticks(range(0, 10001, 1000))
+        axes[1, 1].minorticks_on()
+        axes[1, 1].grid(True, which='minor', alpha=0.1)
+        
+        # ✅ Disable line smoothing/interpolation
+        for ax in axes.flat:
+            ax.set_rasterization_zorder(0)  # Force pixel-perfect rendering
         
         plt.tight_layout()
         plt.show()
         
-        # Save the plots
-        plt.savefig('selfish_robot_simulation_results.png', dpi=300, bbox_inches='tight')
-        print("Plots saved as 'selfish_robot_simulation_results.png'")
+        # ✅ Save at maximum DPI with no compression
+        plt.savefig('non_coopertive_robot_simulation_results.png', 
+                    dpi=900, bbox_inches='tight', 
+                    facecolor='white', edgecolor='none',
+                    format='png', optimize=False)
+        print("High-resolution plots saved as 'non_coopertive_robot_simulation_results.png'")
     
     def run(self):
         """Run the simulation"""
@@ -236,6 +253,6 @@ class Simulation:
         return self.stats
 
 if __name__ == "__main__":
-    # Run simulation with parameters matching the research conditions
-    sim = Simulation(num_robots=90, initial_boxes=0)  # 90 robots (30 each color), no initial boxes
+    # Run the simulation with parameters matching the research conditions
+    sim = Simulation(initial_boxes=10, num_robots=90)
     results = sim.run()

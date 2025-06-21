@@ -13,14 +13,6 @@ class Robot:
         self.carried_box = None
         self.target_box = None
         self.target_nest = None
-        # Todo: do we actually need the states? 
-        self.states = {
-            # Note: Multiple states can be true at a time
-            "carried": False,   # carrying a box
-            "target": False,    # has targeted a box
-            "onPosBox": False,  # on same cell as target box
-            "onPosNest": False  # on same cell as target nest
-        }
     
     @property
     def is_carrying(self):
@@ -71,7 +63,7 @@ class Robot:
     
     def anticipated_criticality(self, box):
         """
-        Anticipated criticality of robot agent for a given box.
+        Anticipated criticality of a robot agent for a given box.
         CA_ri(bk, t) = Max_Ne - Ne_a(bk, t)
         
         Returns:
@@ -80,13 +72,10 @@ class Robot:
         Ne_a = self._calculate_Ne_a(box)
         return utils.MAX_ENERGY - Ne_a
 
-
     def basic_step(self):
         """Basic behavior without advanced features"""
         if self.energy <= 0:
             return
-
-        self.update_states()
 
         if self.has_target and self.target_box not in self.grid.boxes:
             self.target_box = None
@@ -161,6 +150,9 @@ class Robot:
         nest.deposited_boxes.append(self.carried_box)
         self.carried_box.set_status("DEPOSITED")
 
+        # Clear position NOW when box is permanently deposited
+        self.carried_box.clear_position()
+
         # Remove box from grid.boxes list
         if self.carried_box in self.grid.boxes:
             self.grid.boxes.remove(self.carried_box)
@@ -172,11 +164,9 @@ class Robot:
             reward += utils.BONUS_AMOUNT
         self.energy = min(self.energy + reward, utils.MAX_ENERGY)   # Since a robot can't exceed MAX_ENERGY
         
-        
         # Reset states
         self.carried_box = None
         self.target_nest = None
-        self.update_states()
         return True
 
     def pickup(self):
@@ -194,9 +184,8 @@ class Robot:
         box.set_status("CARRIED")
         current_cell.remove_box()
 
-        # update states
+        # Clear target (we now have the box)
         self.target_box = None
-        self.update_states()
 
         # Find nest that matches the color for this box
         for nest in self.grid.nests:
@@ -222,7 +211,6 @@ class Robot:
             if target_pos is None:
                 print(f"  -> Target box no longer exists, clearing target") and utils.DEBUG
                 self.target_box = None
-                self.update_states()
                 return False
         elif isinstance(target, Nest):
             target_pos = target.position
@@ -282,7 +270,6 @@ class Robot:
         
         if nearest_box:
             self.target_box = nearest_box
-            self.update_states()
         
         return nearest_box
     
@@ -385,37 +372,22 @@ class Robot:
             # Add to new cell
             self.grid.cells[new_y][new_x].add_robot(self)
 
-            # Update states based on new position
-            self.update_states()
             return True
         return False
-    
-    def update_states(self):
-        """Update robot states based on current position and surroundings"""
-        current_cell = self._current_cell
-
-        # Update carried state
-        self.states["carried"] = self.carried_box is not None
-
-        # Update target state  
-        self.states["target"] = self.target_box is not None
-
-        # Update position-based states (OnPosBox, PostNest)
-
-        # OnPosBox
-        if self.has_target and current_cell.box == self.target_box:
-            self.states["onPosBox"] = True
-        else:
-            self.states["onPosBox"] = False
-
-        # PostNest
-        if self.target_nest and current_cell.nest == self.target_nest:
-            self.states["onPosNest"] = True
-        else:
-            self.states["onPosNest"] =  False
 
     def _find_box_position(self, box):
+        """Fast position lookup using cached position"""
+        if hasattr(box, "position") and box.position is not None:
+            # verify the position is still valid (box might have been removed)
+            x, y = box.position
+            if 0 <= x < self.grid.width and 0 <= y < self.grid.height:
+                return box.position
+        # fallback to exhaustive if cache is invalid
+        return self._find_box_position_exhaustive(box)
+
+    def _find_box_position_exhaustive(self, box):
         """Find the position of a box on the grid"""
+        utils.DEBUG_MODE and print('exhaustively searching for box position')
         for y in range(self.grid.height):
             for x in range(self.grid.width):
                 cell = self.grid.cells[y][x]
@@ -434,10 +406,3 @@ class Robot:
                     visible_boxes.append(box)
         # print(visible_boxes)
         return visible_boxes
-
-
-
-
-
-
-

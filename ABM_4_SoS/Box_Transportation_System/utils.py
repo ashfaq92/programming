@@ -3,11 +3,10 @@ import random
 """ GLOBAL CONSTANTS """
 
 RAND_SEED = None
-
 seeded_rand = random.Random(RAND_SEED)
 
 COLORS = ["RED", "GREEN", "BLUE"]
-DEBUG_MODE = False
+DEBUG_MODE = True
 BOX_STATUSES = ["INITIALIZED", "CARRIED", "DEPOSITED"]
 
 # CoCaRo simulation parameters
@@ -15,9 +14,10 @@ INITIAL_ENERGY = 300
 MAX_ENERGY = 300
 ENERGY_COST = 1.0  
 PERCEPTION_RADIUS = 3
-BOX_GENERATION_RATE = 1  # every 3 time units
-REWARD_AMOUNT = 2.0  # other options: 2, 10, 15, 20, 50
-BONUS_AMOUNT = 1.0   # other options: 1, 5, 10, 15, 50
+BOX_GENERATION_RATE = 1  # every 3 time unit
+# reward/bonus options: 2/1, 15/10
+REWARD_AMOUNT = 10.0
+BONUS_AMOUNT = 5.0
 BASE_SPEED = 1.5
 
 """ HELPER FUNCTIONS """
