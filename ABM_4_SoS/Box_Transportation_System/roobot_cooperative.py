@@ -19,5 +19,4 @@ class CooperativeRobot(Robot):
 
     def _basic_step(self):
         """Basic step without advanced behaviors"""
-        self.update_states()
         # ... basic robot behavior ...

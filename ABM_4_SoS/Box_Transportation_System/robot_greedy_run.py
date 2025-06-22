@@ -1,5 +1,5 @@
 from environment.grid import Grid
-from robot_non_cooperative import RobotNonCooperative
+from robot_greedy import RobotGreedy
 import utils
 import matplotlib.pyplot as plt
 import numpy as np
@@ -41,6 +41,9 @@ class Simulation:
             'boxes_deposited': [],
             'alive_robots': []  # <-- add this
         }
+        
+        # Initialize time series storage
+        self._initialize_time_series()  # Add this line
     
     def _create_robots(self, num_robots):
         """Create non-cooperative robots with equal distribution of colors"""
@@ -60,7 +63,7 @@ class Simulation:
                 robots_to_create += 1
             
             for j in range(robots_to_create):
-                robot = RobotNonCooperative(
+                robot = RobotGreedy(
                     e=utils.INITIAL_ENERGY,  # 300 as specified
                     c=color,
                     grid=self.grid
@@ -79,14 +82,15 @@ class Simulation:
         """Generate a new box every 3 time units"""
         if self.step_count % 3 == 0:
             # Calculate occupancy rate
-            total_entities = len(self.grid.boxes) + len([r for r in self.grid.robots if r.energy > 0])
-            occupancy_rate = total_entities / (self.grid.width * self.grid.height)
+            # total_entities = len(self.grid.boxes) + len([r for r in self.grid.robots if r.energy > 0])
+            # occupancy_rate = total_entities / (self.grid.width * self.grid.height)
             
             # Stop generation if too crowded
-            if occupancy_rate < 0.75:
-                self._place_new_box()
-            else:
-                print(f"Occupancy rate is {occupancy_rate:.2f}, skipping box generation") if utils.DEBUG_MODE else None
+            # if occupancy_rate < utils.GRID_OCCUPANCY_RATE:
+            #     self._place_new_box()
+            # else:
+            #     print(f"Occupancy rate is {occupancy_rate:.2f}, skipping box generation") if utils.DEBUG_MODE else None
+            self._place_new_box()
 
     def _place_new_box(self):
         """Attempt to place a new box, fail silently if grid is full"""
@@ -134,11 +138,11 @@ class Simulation:
         # Execute robots in random order
         for robot in active_robots:
             robot.step()
-        
-        # Update statistics
+
+        # Update statistics FIRST
         self._update_stats()
         
-        # Record time series data
+        # Record time series data SECOND
         self._record_time_series()
         
         # Generate new boxes
@@ -159,78 +163,63 @@ class Simulation:
 
         return len(active_robots) > 0
     
-    def _update_stats(self):
-        """Update simulation statistics"""
-        self.stats['boxes_deposited'] = sum(len(nest.deposited_boxes) for nest in self.grid.nests)
-        self.stats['robot_energies'] = [robot.energy for robot in self.grid.robots]
-        self.stats['total_energy_consumed'] = sum(utils.INITIAL_ENERGY - robot.energy for robot in self.grid.robots)
+
         
 
     
     def plot_results(self):
-        """Generate sensitive plots that show every fluctuation"""
-        # ✅ Larger figure with higher DPI for detail
+        """Generate plots with color-specific robot tracking"""
         fig, axes = plt.subplots(2, 2, figsize=(20, 16))
         
-        # Plot 1: Mean Battery Level over Time
-        axes[0, 0].plot(self.time_series['steps'], self.time_series['mean_battery'], 
-                    color='blue', linewidth=0.8, alpha=0.9)  # ✅ Thinner line, less smoothing
-        axes[0, 0].set_title('Mean Battery Level of Robots Over Time', fontsize=14)
+        # Plot 1: Average Energy
+        axes[0, 0].plot(self.time_series['steps'], self.time_series['avg_energy'], 
+                    color='blue', linewidth=0.8, alpha=0.9)
+        axes[0, 0].set_title('Average Robot Energy Over Time', fontsize=14)
         axes[0, 0].set_xlabel('Time Steps', fontsize=12)
-        axes[0, 0].set_ylabel('Mean Battery Level', fontsize=12)
+        axes[0, 0].set_ylabel('Average Energy', fontsize=12)
         axes[0, 0].grid(True, alpha=0.3)
         axes[0, 0].set_ylim(0, utils.MAX_ENERGY)
-        axes[0, 0].set_xticks(range(0, 10001, 1000))
-        # ✅ Enable minor ticks for finer detail
-        axes[0, 0].minorticks_on()
-        axes[0, 0].grid(True, which='minor', alpha=0.1)
         
-        # Plot 2: Number of Boxes on Grid over Time
-        axes[0, 1].plot(self.time_series['steps'], self.time_series['num_boxes'], 
-                    color='red', linewidth=0.8, alpha=0.9)  # ✅ Sensitive line
+        # Plot 2: Boxes on Grid
+        axes[0, 1].plot(self.time_series['steps'], self.time_series['boxes_on_grid'], 
+                    color='red', linewidth=0.8, alpha=0.9)
         axes[0, 1].set_title('Number of Boxes on Grid Over Time', fontsize=14)
         axes[0, 1].set_xlabel('Time Steps', fontsize=12)
         axes[0, 1].set_ylabel('Number of Boxes', fontsize=12)
         axes[0, 1].grid(True, alpha=0.3)
-        axes[0, 1].set_xticks(range(0, 10001, 1000))
-        axes[0, 1].minorticks_on()
-        axes[0, 1].grid(True, which='minor', alpha=0.1)
         
-        # Plot 3: Boxes Deposited over Time
-        axes[1, 0].plot(self.time_series['steps'], self.time_series['boxes_deposited'], 
-                    color='green', linewidth=0.8, alpha=0.9)  # ✅ Show every step
+        # Plot 3: Deposited Boxes
+        axes[1, 0].plot(self.time_series['steps'], self.time_series['deposited_boxes'], 
+                    color='green', linewidth=0.8, alpha=0.9)
         axes[1, 0].set_title('Cumulative Boxes Deposited Over Time', fontsize=14)
         axes[1, 0].set_xlabel('Time Steps', fontsize=12)
         axes[1, 0].set_ylabel('Boxes Deposited', fontsize=12)
         axes[1, 0].grid(True, alpha=0.3)
-        axes[1, 0].set_xticks(range(0, 10001, 1000))
-        axes[1, 0].minorticks_on()
-        axes[1, 0].grid(True, which='minor', alpha=0.1)
         
-        # Plot 4: Alive Robots over Time
+        # Plot 4: Alive Robots by Color (THIS IS THE NEW FEATURE!)
         axes[1, 1].plot(self.time_series['steps'], self.time_series['alive_robots'], 
-                    color='purple', linewidth=0.8, alpha=0.9)  # ✅ Capture every death
-        axes[1, 1].set_title('Number of Alive Robots Over Time', fontsize=14)
+                    'k-', linewidth=2, label='Total Alive')
+        axes[1, 1].plot(self.time_series['steps'], self.time_series['alive_robots_red'], 
+                    'r-', linewidth=1.5, label='Red Robots')
+        axes[1, 1].plot(self.time_series['steps'], self.time_series['alive_robots_green'], 
+                    'g-', linewidth=1.5, label='Green Robots')
+        axes[1, 1].plot(self.time_series['steps'], self.time_series['alive_robots_blue'], 
+                    'b-', linewidth=1.5, label='Blue Robots')
+        axes[1, 1].set_title('Alive Robots by Color Over Time', fontsize=14)
         axes[1, 1].set_xlabel('Time Steps', fontsize=12)
-        axes[1, 1].set_ylabel('Alive Robots', fontsize=12)
+        axes[1, 1].set_ylabel('Number of Alive Robots', fontsize=12)
+        axes[1, 1].legend()
         axes[1, 1].grid(True, alpha=0.3)
-        axes[1, 1].set_xticks(range(0, 10001, 1000))
-        axes[1, 1].minorticks_on()
-        axes[1, 1].grid(True, which='minor', alpha=0.1)
-        
-        # ✅ Disable line smoothing/interpolation
-        for ax in axes.flat:
-            ax.set_rasterization_zorder(0)  # Force pixel-perfect rendering
+        axes[1, 1].set_ylim(0, 35)  # Max 30 per color + some headroom
         
         plt.tight_layout()
         plt.show()
         
-        # ✅ Save at maximum DPI with no compression
-        plt.savefig('non_coopertive_robot_simulation_results.png', 
-                    dpi=900, bbox_inches='tight', 
-                    facecolor='white', edgecolor='none',
-                    format='png', optimize=False)
-        print("High-resolution plots saved as 'non_coopertive_robot_simulation_results.png'")
+        # Save the plot
+        plt.savefig('greedy_robot_simulation_with_colors.png', 
+                    dpi=300, bbox_inches='tight', 
+                    facecolor='white', edgecolor='none')
+        print("Color-specific plots saved as 'greedy_robot_simulation_with_colors.png'")
     
     def run(self):
         """Run the simulation"""
@@ -277,7 +266,12 @@ class Simulation:
             'alive_robots_red': [],    # Add this
             'alive_robots_green': [],  # Add this
             'alive_robots_blue': [],   # Add this
-            'deposited_boxes': []
+            'deposited_boxes': [],
+            # Keep backward compatibility keys
+            'mean_battery': [],
+            'num_boxes': [],
+            'boxes_deposited': []
+
         }
 
     def _update_stats(self):
@@ -289,17 +283,21 @@ class Simulation:
         alive_green = sum(1 for robot in active_robots if robot.color == 'GREEN')
         alive_blue = sum(1 for robot in active_robots if robot.color == 'BLUE')
         
-        # Update statistics
-        self.stats = {
+        # Update statistics - USE UPDATE() to preserve existing keys
+        self.stats.update({
             'total_energy': sum(robot.energy for robot in active_robots),
             'avg_energy': sum(robot.energy for robot in active_robots) / len(active_robots) if active_robots else 0,
             'boxes_on_grid': len(self.grid.boxes),
             'alive_robots': len(active_robots),
-            'alive_robots_red': alive_red,     # Add this
-            'alive_robots_green': alive_green, # Add this
-            'alive_robots_blue': alive_blue,   # Add this
-            'deposited_boxes': sum(len(nest.deposited_boxes) for nest in self.grid.nests)
-        }
+            'alive_robots_red': alive_red,
+            'alive_robots_green': alive_green, 
+            'alive_robots_blue': alive_blue,
+            'deposited_boxes': sum(len(nest.deposited_boxes) for nest in self.grid.nests),
+            'boxes_deposited': sum(len(nest.deposited_boxes) for nest in self.grid.nests),  # Keep for compatibility
+            'robot_energies': [robot.energy for robot in self.grid.robots],
+            'total_energy_consumed': sum(utils.INITIAL_ENERGY - robot.energy for robot in self.grid.robots)
+            # 'boxes_generated' is preserved from __init__ and _place_new_box()
+        })
 
     def _record_time_series(self):
         """Record current stats in time series"""
@@ -308,10 +306,15 @@ class Simulation:
         self.time_series['avg_energy'].append(self.stats['avg_energy'])
         self.time_series['boxes_on_grid'].append(self.stats['boxes_on_grid'])
         self.time_series['alive_robots'].append(self.stats['alive_robots'])
-        self.time_series['alive_robots_red'].append(self.stats['alive_robots_red'])       # Add this
-        self.time_series['alive_robots_green'].append(self.stats['alive_robots_green'])   # Add this
-        self.time_series['alive_robots_blue'].append(self.stats['alive_robots_blue'])     # Add this
+        self.time_series['alive_robots_red'].append(self.stats['alive_robots_red'])
+        self.time_series['alive_robots_green'].append(self.stats['alive_robots_green'])
+        self.time_series['alive_robots_blue'].append(self.stats['alive_robots_blue'])
         self.time_series['deposited_boxes'].append(self.stats['deposited_boxes'])
+        
+        # Also keep the old keys for backward compatibility
+        self.time_series['mean_battery'].append(self.stats['avg_energy'])
+        self.time_series['num_boxes'].append(self.stats['boxes_on_grid'])
+        self.time_series['boxes_deposited'].append(self.stats['deposited_boxes'])
 
 if __name__ == "__main__":
     # Run the simulation with parameters matching the research conditions

@@ -13,6 +13,7 @@ class Robot:
         self.carried_box = None
         self.target_box = None
         self.target_nest = None
+        self.crit_current = None
     
     @property
     def is_carrying(self):
@@ -32,6 +33,7 @@ class Robot:
     @property
     def is_on_target_nest(self):
         if self.target_nest is None:
+            print("Warning: robot has no target nest!") if utils.DEBUG_MODE else None
             return False
         return self.target_nest.position == self.position
 
@@ -58,7 +60,7 @@ class Robot:
         Maximum when fully charged
         """
         speed = utils.BASE_SPEED * (self.energy / utils.MAX_ENERGY)
-        # print(speed) 
+        # print(speed)
         return speed
     
     def anticipated_criticality(self, box):
@@ -106,34 +108,16 @@ class Robot:
         
         self.energy -= utils.ENERGY_COST
         
-        # Calculate actual distance moved based on current speed
-        distance_to_move = self.current_speed
-        
-        # Move multiple cells if speed > 1.0
-        moves_made = 0
-        while moves_made < distance_to_move and moves_made < int(distance_to_move) + 1:
-            x, y = self.position
-            possible_moves = []
-            
-            for dx in [-1, 0, 1]:
-                for dy in [-1, 0, 1]:
-                    if dx == 0 and dy == 0:
-                        continue
-                    new_x, new_y = x + dx, y + dy
-                    if (0 <= new_x < self.grid.width and 
-                        0 <= new_y < self.grid.height and
-                        self.grid.cells[new_y][new_x].robot is None):
-                        possible_moves.append((new_x, new_y))
-            
-            if possible_moves:
-                new_position = utils.seeded_rand.choice(possible_moves)
-                self._move_to_position(new_position)
-                moves_made += 1
-            else:
-                break  # Stuck
-        
-        return moves_made > 0
-    
+        # todo: Move multiple cells if speed > 1.0
+        x, y = self.position
+        possible_moves = self.grid.get_neighbors(x, y, valid_only=True)
+
+        if possible_moves:
+            new_position = utils.seeded_rand.choice(possible_moves)
+            self._move_to_position(new_position)
+            return True
+        return False    # stuck
+
     def deposit(self):
         """Deposit carried box in the appropriate nest"""
         current_cell = self._current_cell
@@ -149,8 +133,6 @@ class Robot:
         # Deposit the box
         nest.deposited_boxes.append(self.carried_box)
         self.carried_box.set_status("DEPOSITED")
-
-        # Clear position NOW when box is permanently deposited
         self.carried_box.clear_position()
 
         # Remove box from grid.boxes list
@@ -158,10 +140,12 @@ class Robot:
             self.grid.boxes.remove(self.carried_box)
 
         # calculate reward and bonus
-        reward = utils.REWARD_AMOUNT
         if self.color == self.carried_box.color:
             # Bonus for depositing box of same color as robot
-            reward += utils.BONUS_AMOUNT
+            reward = utils.SAME_COLOR_REWARD    # 2/3 of max energy = 200
+        else:
+            reward = utils.DIFFERENT_COLOR_REWARD   # 1/3 of max energy = 100
+
         self.energy = min(self.energy + reward, utils.MAX_ENERGY)   # Since a robot can't exceed MAX_ENERGY
         
         # Reset states
@@ -170,7 +154,7 @@ class Robot:
         return True
 
     def pickup(self):
-        """Take/pick up a box from current position"""
+        """Take/pick up a box from the current position"""
         if self.is_carrying:    # Already carrying something
             return False
         
@@ -187,7 +171,7 @@ class Robot:
         # Clear target (we now have the box)
         self.target_box = None
 
-        # Find nest that matches the color for this box
+        # Find the nest that matches the color for this box
         for nest in self.grid.nests:
             if nest.color == box.color:
                 self.target_nest = nest
@@ -196,8 +180,7 @@ class Robot:
     
     def go(self, target):
         """Go towards a specific target (box or nest)"""   
-        if self.energy < utils.ENERGY_COST:    # No energy, cannot move
-            # robot dies from attempting to move without energy
+        if self.energy < utils.ENERGY_COST:
             self.energy = 0
             return False
 
@@ -206,48 +189,38 @@ class Robot:
         
         target_pos = None
         if isinstance(target, Box):
-            # find box position on grid
             target_pos = self._find_box_position(target)
             if target_pos is None:
-                print(f"  -> Target box no longer exists, clearing target") and utils.DEBUG
+                print(f"Target box no longer exists, clearing target") if utils.DEBUG_MODE else None
                 self.target_box = None
                 return False
         elif isinstance(target, Nest):
             target_pos = target.position
         else:
             raise ValueError(f"Invalid target type: {type(target)}")
-        
-        # Move one step towards target
-        x, y = self.position
-        target_x, target_y = target_pos
-
-        # Calculate direction
-        dx = 0 if target_x == x else (1 if target_x > x else -1)
-        dy = 0 if target_y == y else (1 if target_y > y else -1)
-
-        new_x, new_y = x + dx, y + dy
-
-        # Check if move is valid
-        if (0 <= new_x < self.grid.width and
-            0 <= new_y < self.grid.height and
-            self.grid.cells[new_y][new_x].robot is None):
-
-            self.energy -= utils.ENERGY_COST
-            self._move_to_position((new_x, new_y))
-            return True
-        else:
-            # Try alternative moves if direct path is blocked
-            alternatives = [(x + dx, y), (x, y + dy)]
-            for alt_x, alt_y in alternatives:
-                if (0 <= alt_x < self.grid.width and
-                    0 <= alt_y < self.grid.height and
-                    self.grid.cells[alt_y][alt_x].robot is None):
-                    
-                    self.energy -= utils.ENERGY_COST
-                    self._move_to_position((alt_x, alt_y))
-                    return True
-        return False
     
+        # Get all valid moves and find the one with shortest distance to target
+        valid_moves = self.grid.get_neighbors(self.position[0], self.position[1], valid_only=True)
+
+        if not valid_moves:
+            print('Robot completely blocked!!') if utils.DEBUG_MODE else None
+            return False
+
+        # Find move with shortest distance to target
+        best_move = valid_moves[0]  # Start with first valid move
+        best_distance = utils.calculate_distance(best_move, target_pos)
+
+        for move in valid_moves:
+            distance = utils.calculate_distance(move, target_pos)
+            if distance < best_distance:
+                best_distance = distance
+                best_move = move
+
+        # Execute the best move
+        self.energy -= utils.ENERGY_COST
+        self._move_to_position(best_move)
+        return True
+
     def find_nearest_box(self):
         """Find and target nearest available box"""
         if self.is_carrying:
@@ -255,14 +228,12 @@ class Robot:
         
         min_distance = float("inf")
         nearest_box = None
-        x, y = self.position
 
         for box in self.grid.boxes:
             if box.status == "INITIALIZED":     # Available box
                 box_pos = self._find_box_position(box)
                 if box_pos:
-                    bx, by = box_pos
-                    distance = abs(x - bx) + abs(y - by)    # Manhattan distance
+                    distance = utils.calculate_distance(self.position, box_pos)
                     # Only consider boxes within perception radius
                     if distance <= utils.PERCEPTION_RADIUS and distance < min_distance:
                         min_distance = distance
@@ -273,40 +244,119 @@ class Robot:
         
         return nearest_box
     
+    # MOVED FROM CHILD CLASS - Common step template
     def step(self):
-        """Main robot decision-making based on perceptions"""
-        """Base step - to be overridden by subclasses"""
-        # raise NotImplementedError("Subclasses must implement step() method")
-        self.basic_step()
+        """Template method for robot decision-making"""
+        if self.energy <= 0:
+            return
+
+        # Common behavior: clear nest if not carrying
+        if self._should_clear_nest():
+            self._clear_nest()
+            return
+
+        # Common behavior: cleanup invalid targets
+        self._cleanup_invalid_targets()
+        
+        # Main decision loop: if no boxes available, just move randomly
+        if not self.grid.boxes:
+            self.move()
+            return
+
+        # Template method pattern - subclasses override these
+        self._evaluate_situation()
+        self._make_decision()
+        self._execute_action()
+
+    # MOVED FROM CHILD CLASS - Common nest clearing behavior
+    def _should_clear_nest(self):
+        """Check if robot should move away from nest"""
+        current_cell = self._current_cell
+        return current_cell.nest is not None and not self.is_carrying
+
+    def _clear_nest(self):
+        """Move away from nest to free up the cell"""
+        current_cell = self._current_cell
+        if utils.DEBUG_MODE:
+            print(f"NEST-CLEARING: Robot at {self.position} moving away from {current_cell.nest.color} nest")
+        self.move()
+
+    # MOVED FROM CHILD CLASS - Common target cleanup
+    def _cleanup_invalid_targets(self):
+        """Remove target if box no longer exists"""
+        if self._target_box_missing():
+            self.target_box = None
+
+    # MOVED FROM CHILD CLASS - Common situation evaluation
+    def _evaluate_situation(self):
+        """Evaluate current situation - to be overridden by subclasses"""
+        self._evaluate_current_criticality()
+
+    def _make_decision(self):
+        """Make strategic decision - to be overridden by subclasses"""
+        pass  # Base implementation does nothing
+
+    def _execute_action(self):
+        """Execute the decided action - common template"""
+        if self.is_carrying:
+            if self.is_on_target_nest:
+                self.deposit()
+            else:
+                self.go(self.target_nest)
+        elif self.has_target:
+            # Check if target box still exists before going to it
+            if not self._box_still_exists(self.target_box):
+                self.target_box = None
+                return
+                
+            if self.is_on_target_box:
+                self.pickup()
+            else:
+                self.go(self.target_box)
+        else:
+            best_box = self.choose_target_box()
+            if best_box:
+                self.go(best_box)
+            else:
+                self.move()
 
     def choose_target_box(self):
         """Base target selection - to be overridden by subclasses"""
-        # raise NotImplementedError("Subclasses must implement choose_target_box() method")
         return self.find_nearest_box()
 
+    # MOVED FROM CHILD CLASS - Common criticality evaluation
+    def _evaluate_current_criticality(self):
+        """Initialize the current criticality based on carried/target state"""
+        self.crit_current = float('inf')
+        try:
+            if self.is_carrying:
+                self.crit_current = self.anticipated_criticality(self.carried_box)
+            elif self.has_target and self._box_still_exists(self.target_box):
+                self.crit_current = self.anticipated_criticality(self.target_box)
+            elif self.has_target:
+                # Target box no longer exists, clear it
+                self.target_box = None
+        except ValueError as e:
+            # If we can't calculate criticality, clear the target
+            print(f"Warning: {e}. Clearing target.") if utils.DEBUG_MODE else None
+            if self.has_target:
+                self.target_box = None
+
     def _calculate_Ne_a(self, box):
-        """
-        Calculate Ne_a(bj, t) - anticipated energy after depositing box
-        
-        Ne_a(bj, t) = {
-            Nr_i(t + td) + rec_ri(bk)  if 0 < result < Max_Ne
-            Max_Ne                     if result >= Max_Ne  
-            0                          else
-        }
-        """
+        """Calculate Ne_a(bj, t) - anticipated energy after depositing box"""
         t_d = self._calculate_t_d(box)
         if t_d == float('inf'):
-            return 0    # robot can't move
+            return 0
         
         # Calculate energy at time t + td (after travel)
         energy_consumed_travel = utils.ENERGY_COST * t_d
-        energy_after_travel = max(0, self.energy - energy_consumed_travel)   # lower capping on energy
+        energy_after_travel = max(0, self.energy - energy_consumed_travel)
 
         # Add reward for depositing the box
-        reward = utils.REWARD_AMOUNT
-        # check if robots gets bonus for same color
         if self.color == box.color:
-            reward += utils.BONUS_AMOUNT
+            reward = utils.SAME_COLOR_REWARD
+        else:
+            reward = utils.DIFFERENT_COLOR_REWARD
             
         anticipated_energy = energy_after_travel + reward
 
@@ -319,30 +369,22 @@ class Robot:
             return 0
     
     def _calculate_t_d(self, box):
-        """
-        Travel time: time taken to go from current position to box and then to nest
-        td = (distance(ri, bk) + distance(bk, Nest)) / Speed_ri(t)
-        """
+        """Travel time: time taken to go from current position to box and then to nest"""
         # Special case: if robot is already carrying this box
         if self.is_carrying and self.carried_box == box:
-            # only need to travel to nest
             target_nest = self._find_nest_for_box(box)
-            distance_to_nest = utils.manhattan_distance(self.position, target_nest.position)
+            distance_to_nest = utils.calculate_distance(self.position, target_nest.position)
             total_distance = distance_to_nest
         else:
-            # normal case: need to go to box first, then to nest
             box_position = self._find_box_position(box)
             if box_position is None:
                 raise ValueError(f"Box {box} doesn't exist!")
             
-            # Find appropriate nest for box
             target_nest = self._find_nest_for_box(box)
-
-            distance_to_box = utils.manhattan_distance(self.position, box_position)
-            distance_to_nest = utils.manhattan_distance(box_position, target_nest.position)
+            distance_to_box = utils.calculate_distance(self.position, box_position)
+            distance_to_nest = utils.calculate_distance(box_position, target_nest.position)
             total_distance = distance_to_box + distance_to_nest
         
-        # avoid division by zero
         if self.current_speed <= 0:
             return float('inf')
 
@@ -352,10 +394,9 @@ class Robot:
     def _find_nest_for_box(self, box):
         """Find the nest with the same color as the box"""
         for nest in self.grid.nests:
-            if nest.color == box.color:     # find nest with SAME color as box
+            if nest.color == box.color:
                 return nest
         
-        # If no matching nest found, this is a configuration error
         raise ValueError(f"No nest found for box color '{box.color}'")
 
     def _move_to_position(self, new_position):
@@ -371,18 +412,15 @@ class Robot:
             
             # Add to new cell
             self.grid.cells[new_y][new_x].add_robot(self)
-
             return True
         return False
 
     def _find_box_position(self, box):
         """Fast position lookup using cached position"""
         if hasattr(box, "position") and box.position is not None:
-            # verify the position is still valid (box might have been removed)
             x, y = box.position
             if 0 <= x < self.grid.width and 0 <= y < self.grid.height:
                 return box.position
-        # fallback to exhaustive if cache is invalid
         return self._find_box_position_exhaustive(box)
 
     def _find_box_position_exhaustive(self, box):
@@ -400,9 +438,15 @@ class Robot:
         visible_boxes = []
         for box in self.grid.boxes:
             box_pos = self._find_box_position(box)
-            if box_pos:     # null check
-                distance = utils.manhattan_distance(self.position, box_pos)
+            if box_pos:
+                distance = utils.calculate_distance(self.position, box_pos)
                 if distance <= utils.PERCEPTION_RADIUS:
                     visible_boxes.append(box)
-        # print(visible_boxes)
         return visible_boxes
+
+    def _box_still_exists(self, box):
+        """Check if a box still exists on the grid"""
+        return box in self.grid.boxes and self._find_box_position(box) is not None
+    
+    def _target_box_missing(self):
+        return self.has_target and not self._box_still_exists(self.target_box)

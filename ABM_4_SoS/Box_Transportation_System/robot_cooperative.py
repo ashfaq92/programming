@@ -1,9 +1,9 @@
 import utils
 from robot import Robot
 
-class RobotGreedy(Robot):
+class RobotCooperative(Robot):
     """
-    Non-cooperative robot that maximizes its own energy by choosing boxes with best anticipated criticality (lowest CA values)
+    Cooperative robot that maximizes its own energy by choosing boxes with best anticipated criticality (lowest CA values)
     """
 
     def __init__(self, *args, **kwargs):
@@ -15,7 +15,7 @@ class RobotGreedy(Robot):
         """Check if a box still exists on the grid"""
         return box in self.grid.boxes and self._find_box_position(box) is not None
 
-    def evaluate_current_criticality(self):
+    def _evaluate_current_criticality(self):
         # Initialize the current criticality based on carried/target state
         self.crit_current = float('inf')
         try:
@@ -123,7 +123,7 @@ class RobotGreedy(Robot):
             self.move()
             return
 
-        self.evaluate_current_criticality()
+        self._evaluate_current_criticality()
         self.find_and_target_better_box()
         self.act_on_current_state()
 

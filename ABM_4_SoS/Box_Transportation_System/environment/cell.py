@@ -1,3 +1,6 @@
+import utils
+
+
 class Cell:
     def __init__(self, x, y):
         self.x = x
@@ -10,10 +13,13 @@ class Cell:
         return self.robot is None and self.box is None and self.nest is None
     
     def add_robot(self, robot):
-        if self.robot is None:     # Robot can coexist with nest
+        if utils.ROBOT_PASSTHROUGH:
             self.robot = robot
         else:
-            raise ValueError("Cannot add robot to non-empty cell.")
+            if self.robot is None:     # Robot can coexist with nest
+                self.robot = robot
+            else:
+                raise ValueError("Cannot add robot to non-empty cell.")
 
     def add_box(self, box):
         if self.robot is None and self.box is None:     # box can coexist with nest

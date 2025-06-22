@@ -17,53 +17,6 @@ class Grid:
         # self._initialize_nests_randomly()
         self._initialize_nests_fixed_equidistant()
 
-    def _initialize_cells(self):
-        self.cells = [[Cell(x,y) for x in range(self.width)] for y in range(self.height)]  #2D grid
-
-    def _initialize_nests_randomly(self):
-        """initialize three nests (red, green, blue) equidistant from each other"""
-        colors = utils.COLORS.copy()
-        utils.seeded_rand.shuffle(colors)
-
-        placed_nests = 0
-        attempts = 0
-        attempts_max = 1000
-        
-        while placed_nests < len(colors) and attempts < attempts_max:
-            x = utils.seeded_rand.randint(0, self.width - 1)
-            y = utils.seeded_rand.randint(0, self.height - 1)
-
-            # Check if cell is empty 
-            if self.cells[y][x].is_empty():
-                nest = Nest(colors[placed_nests], x, y)
-                self.cells[y][x].add_nest(nest)
-                self.nests.append(nest)
-                placed_nests += 1
-            attempts += 1
-        
-        if placed_nests < len(colors):
-            raise ValueError(f"Could only place {placed_nests} out of {len(colors)} nests")
-
-    def _initialize_nests_fixed_equidistant(self):
-        """Initialize nests at predetermined equidistant positions"""
-        colors = utils.COLORS.copy()
-        utils.seeded_rand.shuffle(colors)  # Still randomize color assignment
-
-        # Predetermined positions forming equilateral triangle (for 50x50 grid)
-        fixed_positions = [
-            (25, 15),  # Top
-            (15, 35),  # Bottom-left
-            (35, 35)  # Bottom-right
-        ]
-
-        for i, (x, y) in enumerate(fixed_positions):
-            if self.cells[y][x].is_empty():
-                nest = Nest(colors[i], x, y)
-                self.cells[y][x].add_nest(nest)
-                self.nests.append(nest)
-            else:
-                raise ValueError(f"Predetermined nest position ({x}, {y}) is not empty!")
-
     def initialize_boxes(self, n):
         """Initialize n boxes randomly on the grid"""
         # self.boxes = []
@@ -90,7 +43,6 @@ class Grid:
     
     def add_robot(self, robot, x=None, y=None):
         """Add a robot to the grid at specified or random position"""
-
         if x is not None and y is not None:
             if self.cells[y][x].is_empty():
                 self.cells[y][x].add_robot(robot)
@@ -110,3 +62,86 @@ class Grid:
                     return True
                 attempts += 1
         return False
+
+    def is_valid_move(self, new_x, new_y):
+        # Check if the position is outside the grid
+        if new_x < 0 or new_x >= self.width or new_y < 0 or new_y >= self.height:
+            return False
+
+        # If pass-through is enabled, the robot can always move
+        if utils.ROBOT_PASSTHROUGH:
+            return True
+
+        # If pass-through is disabled, check if there's already a robot there
+        cell = self.cells[new_y][new_x]
+        return cell.robot is None
+
+    def get_neighbors(self, x, y, valid_only=True):
+        """
+        Get neighboring positions (up, down, left, right) for given coordinates
+
+        Args:
+            x, y: Current position coordinates
+            valid_only: If True, only return positions that robots can move to
+
+        Returns:
+            list: List of (x, y) tuples for neighboring positions
+        """
+        neighbors = []
+        for dx, dy in utils.CARDINAL_DIRECTIONS:
+            new_x, new_y = x + dx, y + dy
+
+            if valid_only:
+                if self.is_valid_move(new_x, new_y):
+                    neighbors.append((new_x, new_y))
+            else:
+                neighbors.append((new_x, new_y))
+
+        return neighbors
+
+    def _initialize_nests_fixed_equidistant(self):
+        """Initialize nests at predetermined equidistant positions"""
+        colors = utils.COLORS.copy()
+        utils.seeded_rand.shuffle(colors)  # Still randomize color assignment
+
+        # Predetermined positions forming equilateral triangle (for 50x50 grid)
+        fixed_positions = [
+            (25, 15),  # Top
+            (15, 35),  # Bottom-left
+            (35, 35)  # Bottom-right
+        ]
+
+        for i, (x, y) in enumerate(fixed_positions):
+            if self.cells[y][x].is_empty():
+                nest = Nest(colors[i], x, y)
+                self.cells[y][x].add_nest(nest)
+                self.nests.append(nest)
+            else:
+                raise ValueError(f"Predetermined nest position ({x}, {y}) is not empty!")
+
+    def _initialize_cells(self):
+        self.cells = [[Cell(x, y) for x in range(self.width)] for y in range(self.height)]  # 2D grid
+
+    def _initialize_nests_randomly(self):
+        """initialize three nests (red, green, blue) equidistant from each other"""
+        colors = utils.COLORS.copy()
+        utils.seeded_rand.shuffle(colors)
+
+        placed_nests = 0
+        attempts = 0
+        attempts_max = 1000
+
+        while placed_nests < len(colors) and attempts < attempts_max:
+            x = utils.seeded_rand.randint(0, self.width - 1)
+            y = utils.seeded_rand.randint(0, self.height - 1)
+
+            # Check if cell is empty
+            if self.cells[y][x].is_empty():
+                nest = Nest(colors[placed_nests], x, y)
+                self.cells[y][x].add_nest(nest)
+                self.nests.append(nest)
+                placed_nests += 1
+            attempts += 1
+
+        if placed_nests < len(colors):
+            raise ValueError(f"Could only place {placed_nests} out of {len(colors)} nests")
