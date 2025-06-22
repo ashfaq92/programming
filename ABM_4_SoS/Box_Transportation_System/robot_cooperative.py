@@ -1,7 +1,7 @@
 import utils
 from robot import Robot
 
-class RobotNonCooperative(Robot):
+class RobotGreedy(Robot):
     """
     Non-cooperative robot that maximizes its own energy by choosing boxes with best anticipated criticality (lowest CA values)
     """
@@ -63,6 +63,15 @@ class RobotNonCooperative(Robot):
         # movement logic: execute movement based on the current state
         # If the robot was already carrying a box, it drops it off(deposits) before targeting the new one.
         if self.forced_deposit or self.is_carrying:
+            if utils.DEBUG_MODE and self.target_nest:
+                nest_x, nest_y = self.target_nest.position
+                nest_cell = self.grid.cells[nest_y][nest_x]
+                print(f"Robot at {self.position}, target_nest at {self.target_nest.position}, "
+                      f"nest_cell.robot: {nest_cell.robot is not None}, "
+                      f"nest_cell.nest: {nest_cell.nest is not None}, "
+                      f"positions match: {self.target_nest.position == self.position}, "
+                      f"on_nest: {self.is_on_target_nest}")
+
             if self.is_on_target_nest:
                 self.deposit()
                 if self.forced_deposit:
@@ -94,7 +103,17 @@ class RobotNonCooperative(Robot):
         "main decision-making for non-cooperative robot"
         if self.energy <= 0:    # as long as the robot has energy
             return
-        
+
+        # CRITICAL FIX: If robot is on a nest cell but not carrying, move away to free the cell!
+            # CRITICAL FIX: If robot is on a nest cell but not carrying, move away to free the cell!
+        current_cell = self._current_cell
+        if current_cell.nest is not None and not self.is_carrying:
+            # Robot is on a nest but has no box - free up the cell for others
+            if utils.DEBUG_MODE:
+                print(f"NEST-CLEARING: Robot at {self.position} moving away from {current_cell.nest.color} nest")
+            self.move()
+            return
+
         # Remove target if box no longer exists
         if self._target_box_missing():
             self.target_box = None

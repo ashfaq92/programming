@@ -83,10 +83,12 @@ class Simulation:
             occupancy_rate = total_entities / (self.grid.width * self.grid.height)
             
             # Stop generation if too crowded
-            if occupancy_rate < 0.50:  # Keep 40% free space
-                self._try_place_new_box()
+            if occupancy_rate < 0.75:
+                self._place_new_box()
+            else:
+                print(f"Occupancy rate is {occupancy_rate:.2f}, skipping box generation") if utils.DEBUG_MODE else None
 
-    def _try_place_new_box(self):
+    def _place_new_box(self):
         """Attempt to place a new box, fail silently if grid is full"""
         color = utils.seeded_rand.choice(utils.COLORS)
         
@@ -104,7 +106,7 @@ class Simulation:
                 self.stats['boxes_generated'] += 1
                 # print(f"step: {self.step_count} Box generated at ({x}, {y}) (color: {color})") and utils.DEBUG_MODE
                 return  # Success - exit
-        print(f"Failed to place box (color: {color})") and utils.DEBUG_MODE
+        print(f"Failed to place box (color: {color})") if utils.DEBUG_MODE else None
         # Failed to place after 100 attempts - grid is full, fail silently
     
     def _record_time_series(self):
@@ -143,6 +145,18 @@ class Simulation:
         self._generate_box_if_needed()
         self.step_count += 1
         
+        # CRITICAL FIX: Remove dead robots from grid cells to free up space
+        dead_robots = [robot for robot in self.grid.robots if robot.energy <= 0]
+        for dead_robot in dead_robots:
+            x, y = dead_robot.position
+            cell = self.grid.cells[y][x]
+            if cell.robot == dead_robot:
+                cell.remove_robot()
+                if utils.DEBUG_MODE:
+                    nest_info = f" (on {cell.nest.color} nest)" if cell.nest else ""
+                    print(f"Removed dead robot from {dead_robot.position}{nest_info}")
+            self.grid.robots.remove(dead_robot)
+
         return len(active_robots) > 0
     
     def _update_stats(self):
@@ -251,6 +265,53 @@ class Simulation:
         self.plot_results()
         
         return self.stats
+
+    def _initialize_time_series(self):
+        """Initialize time series data storage"""
+        self.time_series = {
+            'steps': [],
+            'total_energy': [],
+            'avg_energy': [],
+            'boxes_on_grid': [],
+            'alive_robots': [],
+            'alive_robots_red': [],    # Add this
+            'alive_robots_green': [],  # Add this
+            'alive_robots_blue': [],   # Add this
+            'deposited_boxes': []
+        }
+
+    def _update_stats(self):
+        """Update simulation statistics"""
+        active_robots = [robot for robot in self.grid.robots if robot.energy > 0]
+        
+        # Count alive robots by color
+        alive_red = sum(1 for robot in active_robots if robot.color == 'RED')
+        alive_green = sum(1 for robot in active_robots if robot.color == 'GREEN')
+        alive_blue = sum(1 for robot in active_robots if robot.color == 'BLUE')
+        
+        # Update statistics
+        self.stats = {
+            'total_energy': sum(robot.energy for robot in active_robots),
+            'avg_energy': sum(robot.energy for robot in active_robots) / len(active_robots) if active_robots else 0,
+            'boxes_on_grid': len(self.grid.boxes),
+            'alive_robots': len(active_robots),
+            'alive_robots_red': alive_red,     # Add this
+            'alive_robots_green': alive_green, # Add this
+            'alive_robots_blue': alive_blue,   # Add this
+            'deposited_boxes': sum(len(nest.deposited_boxes) for nest in self.grid.nests)
+        }
+
+    def _record_time_series(self):
+        """Record current stats in time series"""
+        self.time_series['steps'].append(self.step_count)
+        self.time_series['total_energy'].append(self.stats['total_energy'])
+        self.time_series['avg_energy'].append(self.stats['avg_energy'])
+        self.time_series['boxes_on_grid'].append(self.stats['boxes_on_grid'])
+        self.time_series['alive_robots'].append(self.stats['alive_robots'])
+        self.time_series['alive_robots_red'].append(self.stats['alive_robots_red'])       # Add this
+        self.time_series['alive_robots_green'].append(self.stats['alive_robots_green'])   # Add this
+        self.time_series['alive_robots_blue'].append(self.stats['alive_robots_blue'])     # Add this
+        self.time_series['deposited_boxes'].append(self.stats['deposited_boxes'])
 
 if __name__ == "__main__":
     # Run the simulation with parameters matching the research conditions
