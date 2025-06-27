@@ -1,5 +1,5 @@
 from environment.grid import Grid
-from robot_greedy import RobotGreedy
+from robot_cooperative import RobotCooperative
 import utils
 import matplotlib.pyplot as plt
 from environment.box import Box
@@ -46,11 +46,11 @@ class Simulation:
         self._initialize_time_series()  # Add this line
 
     def _create_robots(self, num_robots):
-        """Create non-cooperative robots with equal distribution of colors"""
+        """Create cooperative robots with equal distribution of colors"""
         if num_robots != 90:
             print(f"Warning: Expected 90 robots, got {num_robots}")
 
-        # Create 30 robots of each color (RED, GREEN, BLUE)
+        # Create robots of each color (RED, GREEN, BLUE)
         robots_per_color = num_robots // len(utils.COLORS)
         remaining_robots = num_robots % len(utils.COLORS)
 
@@ -63,7 +63,7 @@ class Simulation:
                 robots_to_create += 1
 
             for j in range(robots_to_create):
-                robot = RobotGreedy(
+                robot = RobotCooperative(
                     e=utils.INITIAL_ENERGY,  # 300 as specified
                     c=color,
                     grid=self.grid
@@ -112,7 +112,6 @@ class Simulation:
                 return  # Success - exit
         print(f"Failed to place box (color: {color})") if utils.DEBUG_MODE else None
         # Failed to place after 100 attempts - grid is full, fail silently
-
 
     def step(self):
         """Execute one simulation step"""
@@ -192,10 +191,10 @@ class Simulation:
         plt.show()
 
         # Save the plot
-        plt.savefig('greedy_robot_simulation_with_colors.png',
+        plt.savefig('cooperative_robot_simulation_with_colors.png',
                     dpi=300, bbox_inches='tight',
                     facecolor='white', edgecolor='none')
-        print("Color-specific plots saved as 'greedy_robot_simulation_with_colors.png'")
+        print("Color-specific plots saved as 'cooperative_robot_simulation_with_colors.png'")
 
     def run(self):
         """Run the simulation"""
@@ -250,7 +249,6 @@ class Simulation:
     def _update_stats(self):
         """Update simulation statistics"""
         active_robots = [robot for robot in self.grid.robots if robot.energy > 0]
-
 
         # Update statistics - USE UPDATE() to preserve existing keys
         self.stats.update({

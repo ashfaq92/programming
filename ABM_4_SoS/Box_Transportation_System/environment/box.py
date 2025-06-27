@@ -6,10 +6,17 @@ class Box:
         self.color = utils.validate_color(c)
         self.status = None
         self.position = None
+        self.holder = None
 
-    def set_position(self, x, y):
+    def set_position(self, pos):
         """Set and cache position"""
-        self.position = (x, y)
+        # todo validate position
+        x, y = pos
+        if utils.validate_position((x, y)):
+            self.position = (x, y)
+        else:
+            raise ValueError('invalid position given to box')
+
 
     def clear_position(self):
         """Clear cached position when box is picked up"""
