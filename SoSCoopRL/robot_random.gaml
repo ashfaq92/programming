@@ -2,7 +2,6 @@
 * Name: robot_random 
 * Author: ashfa
 * Tags: CoCaRo
-* Version: Without Criticality but with string states
 */
 
 
@@ -148,7 +147,7 @@ species robot_without_buffer skills: [moving] {
 	point previous_location <- location;  // for movement identification to update battery
     
     string previous_state <- "";
-    string current_state <- "searching";  // "searching", "targeting", "carrying", "depositing"
+    //string current_state <- "searching";  // "searching", "targeting", "carrying", "depositing"
     nest target_nest <- nil;
     box_ carried_box <- nil;
     int robot_speed <- 0;
@@ -214,11 +213,11 @@ species robot_without_buffer skills: [moving] {
 	
 	
     // ===== SEARCH & TARGET =====
-    reflex search_for_boxes when: empty(reachable_boxes) and targeted_box=nil and current_state = "searching" and battery > 0 {
+    reflex search_for_boxes when: empty(reachable_boxes) and targeted_box=nil and battery > 0 {
         do wander amplitude: 90.0;        
     }
     
-    reflex target_best_box when: !empty(reachable_boxes) and targeted_box=nil and carried_box=nil and battery > 0 and current_state = "searching" {
+    reflex target_best_box when: !empty(reachable_boxes) and targeted_box=nil and carried_box=nil and battery > 0 {
         // First, try to find a box of my color
         list<box_> my_color_boxes <- reachable_boxes where (each.color = color);
         
@@ -229,11 +228,10 @@ species robot_without_buffer skills: [moving] {
         }
         
         targeted_box.owner <- self;
-        current_state <- "targeting";
     }
 
     // ===== MOVEMENT & PICKUP =====
-    reflex go_to_target_box when: targeted_box!=nil and battery > 0 and current_state = "targeting" {
+    reflex go_to_target_box when: targeted_box != nil and battery > 0 {
         path path_followed <- goto(target: targeted_box.location, on: cell, return_path: true, speed: float(robot_speed));
         //write 'going towards box';    
         
@@ -242,16 +240,14 @@ species robot_without_buffer skills: [moving] {
         }
     }
     
-    reflex take_box when: targeted_box!=nil and targeted_box.myCell=myCell and targeted_box.owner=self and battery > 0 and current_state = "targeting" {
+    reflex take_box when: targeted_box!=nil and targeted_box.myCell=myCell and targeted_box.owner=self and battery > 0 {
         carried_box <- targeted_box;
         targeted_box <- nil;
-        current_state <- "carrying";
     }
 
     // ===== CARRYING & DEPOSIT =====
-    reflex carry_box_to_nest when: carried_box != nil and battery > 0 and current_state = "carrying" {
+    reflex carry_box_to_nest when: carried_box != nil and battery > 0 {
         target_nest <- nest first_with (each.color = carried_box.color);
-        current_state <- "depositing";
         do goto target: target_nest on: cell return_path: true speed: float(robot_speed);
     }
     
@@ -260,7 +256,7 @@ species robot_without_buffer skills: [moving] {
         carried_box.location <- location;
     }
     
-    reflex drop_box_in_nest when: carried_box != nil and target_nest != nil and battery > 0 and current_state = "depositing" {
+    reflex drop_box_in_nest when: carried_box != nil and target_nest != nil and battery > 0 {
 	    if (myCell = target_nest.myCell) {
 	        target_nest.deposited_boxes <- target_nest.deposited_boxes + 1;
 	        // write('box deposited at ' + string(target_nest.color) + ' nest! Total: ' + string(target_nest.deposited_boxes));
@@ -276,7 +272,6 @@ species robot_without_buffer skills: [moving] {
 	        
 	        carried_box <- nil;
 	        target_nest <- nil;
-	        current_state <- "searching";
 	    } else {
 	        do goto target: target_nest on: cell return_path: true speed: float(robot_speed);
 	    }
@@ -297,21 +292,14 @@ species robot_without_buffer skills: [moving] {
 
     // ===== DEBUG =====
     
-    reflex log_state_changes {
-        if (previous_state != current_state) {
-            write string(self) + ': ' + current_state;
-            previous_state <- current_state;
-        }
-    }
+
     
     
     reflex printLoc when: DEBUG {
         write('Robot:' + string(color) + 'CellIndex: '+ myCell+ string(myCell.grid_x) + myCell.grid_y + string(location));
     }
     
-    reflex debug_alignment when: DEBUG and carried_box != nil and target_nest != nil and current_state = "depositing" {
-	    write('DEBUG: Robot at ' + myCell + ', Nest at ' + target_nest.myCell + ', Box at ' + carried_box.myCell);
-	}
+
 
 } // end of robot_without_buffer species
 
