@@ -21,9 +21,15 @@ global {
 	int grid_width <- 50;
 	int grid_height <- 50;
 	// NEST RELATED
+	
+	// BOX RELATED
+    int box_creation_interval <- 3;  // Create a box every 3 cycles
+    int box_creation_counter <- 0;    // Counter to track creation timing
+	int max_boxes_buffer <- 2;
     
     // ROBOT RELATED
     int robot_vision_range <- 3;
+    int robot_speech_range <- 3;
     int max_battery <- 300;
 	int min_battery <- 0;
 	int initial_battery <- max_battery;
@@ -36,12 +42,16 @@ global {
 	// CRITICALITY RELATED
 	int min_criticality <- min_battery;
 	int max_criticality <- max_battery;
+	int need_box_threshold <- int(max_criticality / 2);
+	string criticality_string <- "criticality";
+	string demand_box_string <- "GiveMeYourBox";
+	string give_my_box_string <- "GiveMyBoxToYou";
 	   
     init {
     	do spawn_nests();
     	//do spawn_boxes();
     	create box_ number:100;
-    	create robot_without_buffer number: 90;
+    	create robot_cooperative number: 90;
     }
     
     action spawn_nests { 
@@ -52,40 +62,31 @@ global {
 	    //do log(string(nests_locations));
     }
     
-   
+    
+
+	reflex spawn_boxes_at_interval {
+	    box_creation_counter <- box_creation_counter + 1;
+	    if (box_creation_counter >= box_creation_interval) {
+	        create box_ number: 1;  // This calls the species init which calls create_box
+	        box_creation_counter <- 0;
+	        write 'box spawned at ' + cycle;
+	    }
+	} 
 	
 	reflex debugfunc {
 		//write one_of(cell);
 	}   
-	
-	reflex count_species {  // for testing purposes
-		int number_of_boxes <- length(box_);
-		int number_of_robots <- length(robot_without_buffer);
-    	write('boxes: ' + string(number_of_boxes) );
-    	write('robots: ' + string(number_of_robots) );
-    	if number_of_boxes <= 0 or number_of_robots <= 0{
-    		
-    		ask world {
-    			do pause;
-    		}	
-    	}
-    	
-    }
 }
 
 
 
-grid cell width:grid_width height:grid_height neighbors: 4 {
-    // list<cell> neighbors_at_robot_vision2 <-  cell at_distance(robot_vision_range); // includes diagonal distance
-    //list<cell> neighbors_at_robot_vision <- (self neighbors_at (robot_vision_range));
-    
+grid cell width:grid_width height:grid_height neighbors: 4 {    
     list<cell> neighbors_at_robot_vision update: (self neighbors_at (robot_vision_range));
+    list<cell> neighbors_at_robot_speech update: (self neighbors_at (robot_speech_range));
        
   	aspect default {
 	    draw string(string(index)) color: #black anchor: #center font: font(3); 
   	}
-  
-  
 }
 
 species nest {
@@ -118,7 +119,7 @@ species nest {
 
 species box_ {
 	rgb color;
-	robot_without_buffer owner <- nil;
+	robot_cooperative owner <- nil;
 	//cell myCell update: cell first_with (each overlaps self);
 	// cell myCell <- cell(location);  // fastest
 	// cell myCell <- cell closest_to self;
@@ -128,9 +129,8 @@ species box_ {
 		write('Box:' + string(color) + 'CellIndex: '+ myCell+ string(myCell.grid_x) + myCell.grid_y + string(location));
 	}
 	
-	
-	init {
-    	// get random color
+	action create_box {
+		// get random color
     	color <- any(colors);
     	// get random location on grid
     	loop while: true {
@@ -143,7 +143,12 @@ species box_ {
     			break;
     		}    		
     	}
+	}
+	
+	init {
+    	do create_box();
     }
+   
     
     
 	
@@ -161,9 +166,11 @@ species box_ {
 }
 
 
-species robot_without_buffer skills: [moving] {
+species robot_cooperative skills: [moving, fipa] {
     // ===== ATTRIBUTES =====
-	
+	bool is_need_a_box update: need_box_threshold < criticality;
+    int criticality <- 0 update: max_criticality - battery max: max_criticality;
+
 	
 	int battery <- initial_battery min: min_battery max: max_battery; 
 	point previous_location <- location;  // for movement identification to update battery
@@ -220,7 +227,6 @@ species robot_without_buffer skills: [moving] {
 	    color <- rgb("black");
 	}
 	
-	
 	int colors_reward_efficiency(rgb box_color) {
 		if (box_color=color) {
         	return reward;  // Same color: full reward
@@ -228,6 +234,7 @@ species robot_without_buffer skills: [moving] {
         	return reduced_reward;  // other color: 20% reward
         }
 	}
+	
 	
 	
 	// ===== UPDATE BATTERY =====
@@ -241,23 +248,44 @@ species robot_without_buffer skills: [moving] {
 	
 	
 	
-
-    // ===== SEARCH & TARGET =====
-    reflex search_for_boxes when: empty(reachable_boxes) and targeted_box=nil and battery > 0 {
+    // ===== MOVE & SEARCH =====
+    reflex basic_move when: targeted_box=nil and carried_box=nil and battery > 0 {
         do wander amplitude: 90.0;        
     }
     
-    reflex target_best_box when: !empty(reachable_boxes) and targeted_box=nil and carried_box=nil and battery > 0 {
-        // First, try to find a box of my color
-        list<box_> my_color_boxes <- reachable_boxes where (each.color = color);
-        
-        if !(empty(my_color_boxes)) {
-        	targeted_box <- my_color_boxes closest_to self;
-        } else {    	
-	        targeted_box <- reachable_boxes closest_to self;
-        }
-        
-        targeted_box.owner <- self;
+    reflex search_box when: !empty(reachable_boxes) and battery > 0 {
+    	loop bx over: reachable_boxes {
+    		// bool message sent <- false
+    		int box_efficiency <- colors_reward_efficiency(bx.color);
+    		int ant_reach_crit <- compute_anticipated_criticality(bx);  // ant. crit. of reachable box
+    		
+    		
+			if carried_box = nil {
+    			if targeted_box = nil {		// dont carry dont target 
+    				targeted_box <- bx;
+    				targeted_box.owner <- self;
+    			} else {					// dont carry but target
+    				int my_target_box_crit <- compute_anticipated_criticality(targeted_box);
+    				// check if this is a better box
+    				if ant_reach_crit < my_target_box_crit {
+    					write 'better box!! suppress target';
+    					targeted_box.owner <- nil;
+    					targeted_box <- bx;
+    					targeted_box.owner <- self;
+    				}
+    			}
+    		} else {	// i carry a box
+    			int my_carried_box_crit <- compute_anticipated_criticality(carried_box);
+    			// check if this is a better box
+    			if ant_reach_crit < my_carried_box_crit {
+    				write 'better box!! suppress carried';
+    				carried_box.owner <-nil;		//verify
+    				carried_box <- nil;
+    				targeted_box <- bx;
+    				targeted_box.owner <- self;
+    			}
+    		}
+    	}
     }
 
     // ===== MOVEMENT & PICKUP =====
@@ -303,6 +331,82 @@ species robot_without_buffer skills: [moving] {
 	    }
 	}
 	
+	// ===== Calculate ANTICIPATED Criticality =====
+	int compute_anticipated_criticality (box_ box_to_take) {
+		int dist_box_to_me <- abs(box_to_take.myCell.grid_x - self.myCell.grid_x) + abs(box_to_take.myCell.grid_y - self.myCell.grid_y);
+		float dist_box_to_me_bk <- self distance_to box_to_take;
+		nest nest_cell <- nest first_with (each.color = box_to_take.color);
+		int dist_robot_to_nest <- abs(nest_cell.myCell.grid_x - self.myCell.grid_x) + abs(nest_cell.myCell.grid_y - self.myCell.grid_y);
+		int anticipated_battery_before_reward <- battery - (dist_box_to_me + dist_robot_to_nest) * battery_consum;
+		
+		if anticipated_battery_before_reward < 0 {
+			anticipated_battery_before_reward <- 0;
+		}
+				
+		int anticipated_battery <- anticipated_battery_before_reward + colors_reward_efficiency(box_to_take.color);
+		
+		if anticipated_battery < min_battery {
+			return max_criticality;
+		} else if anticipated_battery > max_battery {
+			return max_battery;
+		} else {
+			return max_criticality - anticipated_battery;
+		}
+	}
+	
+	
+	// ===== COOPERATION WITH OTHER ROBOTS =====
+	reflex request_criticality when: is_need_a_box and carried_box=nil and targeted_box=nil and battery>0 {		
+		list<robot_cooperative> receivers <- (robot_cooperative where (myCell.neighbors_at_robot_speech contains each.myCell)) where (each.battery > 0);
+				
+		loop receiver over: receivers {
+			if receiver.carried_box != nil {
+				write 'i request box to:' + receiver;
+				int anticipated_criticality <- compute_anticipated_criticality(receiver.carried_box);
+				do start_conversation to: [receiver] protocol:'fipa-request' performative: 'request' contents: [criticality_string, anticipated_criticality, self.criticality];
+			}
+		}
+	}
+	
+	reflex read_request when: !empty(requests) and battery > 0 {
+		write 'reading requests';
+		loop request over: requests {
+			string request_type <- request.contents[0];
+			
+			if request_type=criticality_string and carried_box != nil {
+				int my_ant_crit <- compute_anticipated_criticality(carried_box);
+				int sender_ant_crit <- int(request.contents[1]);
+				
+				if (my_ant_crit > sender_ant_crit) {
+	                //do agree with: [message :: request, content :: [give_my_box_string]];
+	                do agree message: request contents: [give_my_box_string];
+	                //do inform with: [message :: request, content :: [give_my_box_string, my_crit]];
+	                do inform message: request contents:[give_my_box_string, my_ant_crit];
+	                write ('Propose my box to ' + request.sender);
+	            } else {
+	                //do refuse with: [message :: request, content :: ['Ko']];
+	            	do refuse message: request contents: ['Ko'] ;
+	            	write ('refused request. as: ' + 'my_ant_crit' + string(my_ant_crit) + ' sender_ant_crit' + string(sender_ant_crit));
+	            }
+			}
+			
+			if (request_type=demand_box_string) {
+				// potential issues: dropping receiver's box, comparing criticality before exchange
+				
+	            robot_cooperative receiver <- (request.sender as robot_cooperative);
+	            				
+	            do agree message: request contents: [carried_box.location];
+	            do inform message: request contents: ['waiting'];
+	            	            
+	            carried_box.owner <- receiver;
+	            receiver.targeted_box <- carried_box;
+	            carried_box <- nil;
+	            write('----box exchange done------');
+	        }
+		}
+	}
+	
+	
 	// ===== ASPECTS =====
     aspect default {        
         draw triangle(1) color: color;
@@ -317,17 +421,13 @@ species robot_without_buffer skills: [moving] {
     }
 
     // ===== DEBUG =====
-    
-
-    
-    
     reflex printLoc when: DEBUG {
         write('Robot:' + string(color) + 'CellIndex: '+ myCell+ string(myCell.grid_x) + myCell.grid_y + string(location));
     }
     
 
 
-} // end of robot_without_buffer species
+} // end of robot_cooperative species
 
 
 
@@ -338,7 +438,7 @@ experiment myExperiment type:gui {
 			species cell aspect:default;
 			species nest aspect:default;
 			species box_ aspect:default;
-			species robot_without_buffer aspect:default;
+			species robot_cooperative aspect:default;
 		}
 	}
 }

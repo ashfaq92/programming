@@ -41,7 +41,7 @@ global {
     	do spawn_nests();
     	//do spawn_boxes();
     	create box_ number:100;
-    	create robot_without_buffer number: 90;
+    	create robot_without_buffer number: 1;
     }
     
     action spawn_nests { 
@@ -220,7 +220,6 @@ species robot_without_buffer skills: [moving] {
 	    color <- rgb("black");
 	}
 	
-	
 	int colors_reward_efficiency(rgb box_color) {
 		if (box_color=color) {
         	return reward;  // Same color: full reward
@@ -229,6 +228,29 @@ species robot_without_buffer skills: [moving] {
         }
 	}
 	
+	// ===== Calculate ANTICIPATED Criticality =====
+	
+	int compute_anticipated_criticality (box_ box_to_take) {
+		int dist_box_to_me <- abs(box_to_take.myCell.grid_x - self.myCell.grid_x) + abs(box_to_take.myCell.grid_y - self.myCell.grid_y);
+		float dist_box_to_me_bk <- self distance_to box_to_take;
+		nest nest_cell <- nest first_with (each.color = box_to_take.color);
+		int dist_robot_to_nest <- abs(nest_cell.myCell.grid_x - self.myCell.grid_x) + abs(nest_cell.myCell.grid_y - self.myCell.grid_y);
+		int anticipated_battery_before_reward <- battery - (dist_box_to_me + dist_robot_to_nest) * battery_consum;
+		
+		if anticipated_battery_before_reward < 0 {
+			anticipated_battery_before_reward <- 0;
+		}
+				
+		int anticipated_battery <- anticipated_battery_before_reward + colors_reward_efficiency(box_to_take.color);
+		
+		if anticipated_battery < min_battery {
+			return max_criticality;
+		} else if anticipated_battery > max_battery {
+			return max_battery;
+		} else {
+			return max_criticality - anticipated_battery;
+		}
+	}
 	
 	// ===== UPDATE BATTERY =====
 	reflex update_battery when: battery > 0 {
@@ -241,23 +263,45 @@ species robot_without_buffer skills: [moving] {
 	
 	
 	
-
-    // ===== SEARCH & TARGET =====
-    reflex search_for_boxes when: empty(reachable_boxes) and targeted_box=nil and battery > 0 {
+    // ===== MOVE & SEARCH =====
+    reflex basic_move when: targeted_box=nil and carried_box=nil and battery > 0 {
         do wander amplitude: 90.0;        
     }
     
-    reflex target_best_box when: !empty(reachable_boxes) and targeted_box=nil and carried_box=nil and battery > 0 {
-        // First, try to find a box of my color
-        list<box_> my_color_boxes <- reachable_boxes where (each.color = color);
-        
-        if !(empty(my_color_boxes)) {
-        	targeted_box <- my_color_boxes closest_to self;
-        } else {    	
-	        targeted_box <- reachable_boxes closest_to self;
-        }
-        
-        targeted_box.owner <- self;
+    reflex search_box when: !empty(reachable_boxes) and battery > 0 {
+    	write reachable_boxes;
+    	loop bx over: reachable_boxes {
+    		// bool message sent <- false
+    		int box_efficiency <- colors_reward_efficiency(bx.color);
+    		int ant_reach_crit <- compute_anticipated_criticality(bx);  // ant. crit. of reachable box
+    		
+    		
+			if carried_box = nil {
+    			if targeted_box = nil {		// dont carry dont target 
+    				targeted_box <- bx;
+    				targeted_box.owner <- self;
+    			} else {					// dont carry but target
+    				int my_target_box_crit <- compute_anticipated_criticality(targeted_box);
+    				// check if this is a better box
+    				if ant_reach_crit < my_target_box_crit {
+    					write 'better box!! suppress target';
+    					targeted_box.owner <- nil;
+    					targeted_box <- bx;
+    					targeted_box.owner <- self;
+    				}
+    			}
+    		} else {	// i carry a box
+    			int my_carried_box_crit <- compute_anticipated_criticality(carried_box);
+    			// check if this is a better box
+    			if ant_reach_crit < my_carried_box_crit {
+    				write 'better box!! suppress carried';
+    				carried_box.owner <-nil;		//verify
+    				carried_box <- nil;
+    				targeted_box <- bx;
+    				targeted_box.owner <- self;
+    			}
+    		}
+    	}
     }
 
     // ===== MOVEMENT & PICKUP =====

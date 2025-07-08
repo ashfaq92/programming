@@ -585,7 +585,7 @@ species robot_without_buffer skills:[moving, fipa] {
 	}
 	
 	
-	reflex read_requests when: !is_dead and !empty(requests) and !is_dead{
+	reflex read_requests when: !empty(requests) and !is_dead{
 		loop request over: requests {
 			switch request.contents[0] {
 				match criticality_string {

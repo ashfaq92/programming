@@ -245,7 +245,6 @@ entities {
 			if (is_auth_to_move) {
 				battery <- battery - battery_consum;
 			}
-			
 		}
 		
 		
