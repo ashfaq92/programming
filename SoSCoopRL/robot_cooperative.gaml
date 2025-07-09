@@ -209,23 +209,7 @@ species robot_cooperative skills: [moving, fipa] {
 	}
 
     
-	// ===== DIE =====
-	reflex die when: battery <= 0 {
-	    write name + " battery depleted!";
-	    
-	    // Release carried box (don't destroy it)
-	    if (carried_box != nil) {
-	        carried_box.owner <- nil;  // Other robots can pick it up
-	        carried_box <- nil;
-	    }
-	    
-	    // Release targeted box claim
-	    if (targeted_box != nil) {
-	        targeted_box.owner <- nil;  // Other robots can target it
-	        targeted_box <- nil;
-	    }    
-	    color <- rgb("black");
-	}
+	
 	
 	int colors_reward_efficiency(rgb box_color) {
 		if (box_color=color) {
@@ -368,11 +352,10 @@ species robot_cooperative skills: [moving, fipa] {
 		}
 	}
 	
-	reflex read_request when: !empty(requests) and battery > 0 {
+	reflex read_requests when: !empty(requests) and battery > 0 {
 		write 'reading requests';
 		loop request over: requests {
 			string request_type <- request.contents[0];
-			
 			if request_type=criticality_string and carried_box != nil {
 				int my_ant_crit <- compute_anticipated_criticality(carried_box);
 				int sender_ant_crit <- int(request.contents[1]);
@@ -390,7 +373,9 @@ species robot_cooperative skills: [moving, fipa] {
 	            }
 			}
 			
+			//if (request_type=demand_box_string and carried_box != nil) {  // Add carried_box != nil check
 			if (request_type=demand_box_string) {
+				
 				// potential issues: dropping receiver's box, comparing criticality before exchange
 				
 	            robot_cooperative receiver <- (request.sender as robot_cooperative);
@@ -406,6 +391,74 @@ species robot_cooperative skills: [moving, fipa] {
 		}
 	}
 	
+	reflex read_agrees when:!empty(agrees) and battery > 0 {
+		loop agree over: agrees {	
+			write agree.contents;
+			string agree_type <- agree.contents[0];
+			 
+			 if agree_type=give_my_box_string {
+			 	// 
+			 	// write 'Agent ' + agree.sender + ' says ok for giving';
+			 } else {
+			 	point tempVar <- (agree.contents) as point;  
+			 	write tempVar;
+			 	location <- tempVar;
+			 }
+		}
+	}
+	
+	reflex read_refuses when:!empty(refuses) and battery > 0 {
+		
+	}
+	
+	reflex read_inform when: !empty(informs) and battery > 0 {
+		int best_criticality <- max_criticality;
+		robot_cooperative giver <- nil;
+		loop inform over: informs {
+			write inform;
+			write inform.contents;
+			/*For example: 
+			* inform: message[sender: robot_cooperative46; receivers: [robot_cooperative63]; performative: inform; content: [GiveMyBoxToYou, 300]; content]
+			* inform.contents:  ['GiveMyBoxToYou',300]
+			*/
+			string content_type <- inform.contents[0];
+			
+			if content_type=give_my_box_string {
+				int ant_criticality_temp <- int(inform.contents[1]);
+				
+				if ant_criticality_temp < best_criticality {
+					best_criticality <- ant_criticality_temp;
+					giver <- (inform.sender as robot_cooperative);
+				}
+			}
+		}
+	    // request the box from the best giver
+	    if (giver != nil) {
+    	    // Check if giver is still in communication range
+    	    // list<robot_cooperative> nearby <- (robot_cooperative where (myCell.neighbors_at_robot_speech contains each.myCell));
+	    	// if (nearby contains giver) {
+	    	write 'requesting box from best giver: ' + giver;
+	    	do start_conversation to: [giver] protocol: 'fipa-request' performative: 'request' contents: [demand_box_string];	    	
+	    }	
+	}
+	
+	// ===== DIE =====
+	reflex die when: battery <= 0 {
+	    write name + " battery depleted!";
+	    
+	    // Release carried box (don't destroy it)
+	    if (carried_box != nil) {
+	        carried_box.owner <- nil;  // Other robots can pick it up
+	        carried_box <- nil;
+	    }
+	    
+	    // Release targeted box claim
+	    if (targeted_box != nil) {
+	        targeted_box.owner <- nil;  // Other robots can target it
+	        targeted_box <- nil;
+	    }    
+	    color <- rgb("black");
+	}
 	
 	// ===== ASPECTS =====
     aspect default {        
