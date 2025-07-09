@@ -411,6 +411,7 @@ entities {
 						
 						//do inform with: [ message :: request, content :: [criticality_string + ':' + criticality] ];
 						// calcul la criticité anticipée et décide si oui ou non il laisse sa boite
+						// calculates the anticipated criticality and decides whether or not to leave his box
 						if (carried_box != nil) {
 							int my_ant_criticality <- compute_anticipated_criticality(carried_box);
 							int sender_ant_criticality <- int(request.content[1]);
