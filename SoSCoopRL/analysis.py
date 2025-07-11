@@ -10,7 +10,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-df = pd.read_csv('data.csv', names=['cycle', 'battery', 'boxes', 'alive', 'type'])
+df = pd.read_csv('data_python.csv', names=['cycle', 'battery', 'boxes', 'alive', 'type'])
 
 print("Robot types in data:", df['type'].unique())
 print("Data counts per type:")
@@ -21,21 +21,21 @@ print(df.head(10))
 fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
 
 # Plot battery levels
-for robot_type, color in [('random', 'red'), ('greedy', 'green'), ('cooperative', 'blue')]:
+for robot_type, color in [('random', 'red'), ('greedy', 'green'), ('double_cooperative', 'blue')]:
     data = df[df['type'] == robot_type]
     ax1.plot(data['cycle'], data['battery'], color=color, label=robot_type)
 ax1.set_ylabel('Mean Battery Level')
 ax1.legend()
 
 # Plot box counts
-for robot_type, color in [('random', 'red'), ('greedy', 'green'), ('cooperative', 'blue')]:
+for robot_type, color in [('random', 'red'), ('greedy', 'green'), ('double_cooperative', 'blue')]:
     data = df[df['type'] == robot_type]
     ax2.plot(data['cycle'], data['boxes'], color=color, label=robot_type)
 ax2.set_ylabel('Boxes in Environment')
 ax2.legend()
 
 # Plot alive robots
-for robot_type, color in [('random', 'red'), ('greedy', 'green'), ('cooperative', 'blue')]:
+for robot_type, color in [('random', 'red'), ('greedy', 'green'), ('double_cooperative', 'blue')]:
     data = df[df['type'] == robot_type]
     ax3.plot(data['cycle'], data['alive'], color=color, label=robot_type)
 ax3.set_ylabel('Living Robots')

@@ -1,3 +1,8 @@
+SoSCoopRL\reference
+
+
+
+
 catkin_ws/.vscode
 catkin_ws/build
 catkin_ws/build_isolated
@@ -336,4 +341,4 @@ cython_debug/
 # Marimo
 marimo/_static/
 marimo/_lsp/
-__marimo__/
+__marimo__/SoSCoopRL/reference/

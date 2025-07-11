@@ -366,7 +366,7 @@ entities {
 			is_carrying_box <- true;
 		}
 		
-		reflex carry_box_to_nest when: carried_box != nil and !is_waiting_to_give_box and is_auth_to_move and !is_dead{
+		reflex carry_box_to_nest when: carried_box != nil and !is_waiting_to_give_box and waiting_turn_nb and !is_dead{
 			waiting_turn_nb <-0;
 			path path_followed <- self goto [target::nests_locations[carried_box.color], on::cell, return_path:: true, speed::robot_speed];
 			myCell <- cell({location.x, location.y});
