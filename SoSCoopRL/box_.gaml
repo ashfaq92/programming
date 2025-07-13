@@ -21,24 +21,10 @@ species box_ {
 	cell myCell update: cell closest_to self;	
 	
 	
-	action create_box {
-		// get random color
-    	color <- any(colors);
-    	// get random location on grid
-    	loop while: true {
-    		cell randCell <- any(cell);
-    		//bool isEmpty <- length(agents_on(randCell)) = 0;
-    		bool isEmpty <- length(agents_inside(randCell)) = 0;
-    		if (isEmpty) {
-    			//myCell <- randCell;
-    			location <- randCell.location;
-    			break;
-    		}    		
-    	}
-	}
+	
 	
 	init {
-    	do create_box();
+    	color <- one_of(colors);
     }
    
     

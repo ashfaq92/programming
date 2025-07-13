@@ -1,145 +1,121 @@
 /**
- * SApHESIA System of Systems Implementation
- * Each color group becomes a component-system that can cooperate
- */
+* Name: robotsaphesia
+* Based on the internal empty template. 
+* Author: ashfa
+* Tags: 
+*/
 
-species component_system skills: [communicating] {
-    rgb system_color;
-    list<robot_base> robots update: robot_base where (each.color = system_color and !dead(each));
-    list<robot_base> dying_robots update: robots where (each.battery < max_battery/3);
-    list<component_system> linked_systems;
+
+model robot_saphesia
+
+import "robot_double_cooperative.gaml"
+
+global {
+	 // SApHESIA Model Parameters (from research paper)
+    float BATTERY_DYING_THRESHOLD <- 1.0/3.0;        // robot.battery < MaxNe/3
+    float CRITICALITY_THRESHOLD_NEEDS_HELP <- 0.3;   // RDying > Rr/2  
+    // Paper doesn't specify "can help" threshold, so we'll use a reasonable value
+    float CRITICALITY_THRESHOLD_CAN_HELP <- 0.7;     // System can help if < 60% dying
     
-    // SApHESIA model attributes
+    // FIPA Message Constants
+    string MSG_HELP_REQUEST <- "help_request";
+    string MSG_HELP_ACCEPTED <- "help_accepted"; 
+    string MSG_HELP_REFUSED <- "help_refused";
+}
+
+
+species component_system skills: [fipa] {
+	rgb system_color;
+    list<robot_double_cooperative > robots update: robot_double_cooperative where (each.color = system_color and !dead(each));
+    list<robot_double_cooperative> dying_robots update: robots where (each.battery < each.max_battery * BATTERY_DYING_THRESHOLD);
+    
+
+    
+    list <component_system> linked_systems;
+    
+    // saphesia model attributes
     int component_criticality update: length(dying_robots);
     float criticality_ratio update: (length(robots) = 0) ? 0.0 : (length(dying_robots) / length(robots));
-    bool needs_help update: criticality_ratio > 0.5; // More than half robots dying
+    bool needs_help update: criticality_ratio > CRITICALITY_THRESHOLD_NEEDS_HELP; // more than half robots dying
     bool is_helping <- false;
     
     init {
-        linked_systems <- component_system - self;
-    }
+    	linked_systems <- component_system - self;  //populate each component system's list of all OTHER component systems (excluding itself).
+    } 
     
-    // Functionality: Help another component-system by changing robot perceptions
+ 
+  
+    
+    
+    
+    // Basic help actions
     action help_system(component_system target_system) {
         write "Component " + system_color + " helping " + target_system.system_color;
-        
         ask robots {
-            // Make our robots treat target system's boxes as valuable as our own
-            colors_reward_efficiency[target_system.system_color] <- reward;
-            write self.name + " now values " + target_system.system_color + " boxes highly";
+        	helped_colors <- helped_colors + target_system.system_color;
+	        write self.name + " now values " + target_system.system_color + " boxes highly";
         }
         is_helping <- true;
     }
-    
+
     action stop_helping(component_system target_system) {
         write "Component " + system_color + " stopping help to " + target_system.system_color;
-        
         ask robots {
-            // Reset reward efficiency to normal
-            colors_reward_efficiency[target_system.system_color] <- reduced_reward;
+        	helped_colors <- helped_colors - target_system.system_color;	
         }
         is_helping <- false;
     }
-    
-    // Calculate anticipated criticality if we help another system
-    float calculate_anticipated_criticality(component_system target_system) {
-        // Estimate how our criticality would change if we help
-        // Helping means our robots will spend time on other colors' boxes
-        float efficiency_loss <- 0.3; // Assume 30% efficiency loss when helping
-        float anticipated_dying <- length(dying_robots) * (1.0 + efficiency_loss);
-        return min(anticipated_dying, length(robots));
+
+	
+	// request help when in critical state
+    reflex request_help when: needs_help and !is_helping {
+    	write "System:" + system_color + ' requesting help ' + length(dying_robots);
+    	
+    	loop target_system over: linked_systems {
+    		if !target_system.is_helping and target_system.criticality_ratio < CRITICALITY_THRESHOLD_CAN_HELP {
+		    	do start_conversation to: [target_system] protocol: 'fipa-request' performative: 'request' contents: [MSG_HELP_REQUEST, system_color];
+    			
+    		}
+    	}
     }
+    
+    // process incoming help requests
+    reflex process_requests when: !empty(requests) {
+    	loop request over: requests {
+    		string req_content <- request.contents[0];
+    		if req_content = MSG_HELP_REQUEST {
+    			rgb requester_color <- rgb(request.contents[1]);
+                component_system requester <- first(linked_systems where (each.system_color = requester_color));
+    			
+    			if requester != nil and criticality_ratio < CRITICALITY_THRESHOLD_CAN_HELP {
+					do agree message: request contents: [MSG_HELP_ACCEPTED];					
+					do help_system(requester);
+                    write "System " + system_color + " agreed to help " + requester_color;
+    			} else {
+    				do refuse message: request contents: [MSG_HELP_REFUSED];
+                    write "System " + system_color + " refused to help " + requester_color;
+    			}
+    			
+    		}
+    	}
+    	
+    } 
+    
+    
+    reflex log {
+    	write("System:" + system_color + " Robots:" + length(robots) + " Dying:" + length(dying_robots));
+    }
+    
+    
+
     
     aspect default {
-        draw circle(5) color: system_color at: {world.shape.width * (system_color = rgb("red") ? 0.1 : (system_color = rgb("green") ? 0.5 : 0.9)), 10};
-        draw string("System " + system_color + "\nRobots: " + length(robots) + "\nDying: " + length(dying_robots)) 
-            color: rgb("white") size: 1.0 at: {world.shape.width * (system_color = rgb("red") ? 0.1 : (system_color = rgb("green") ? 0.5 : 0.9)), 20};
-    }
+		    // Simple circle without complex positioning
+		    draw circle(2) color: system_color border: rgb("black") width: 1;
+		    
+		    // Simple text without newlines, using contrasting color
+		    draw string("Sys:" + system_color + " R:" + length(robots) + " D:" + length(dying_robots)) 
+		        color: rgb("black") size: 0.8;
+		}
 }
 
-species saphesia_component_system parent: component_system {
-    
-    // Request help when in critical state
-    reflex request_help when: needs_help and !is_helping {
-        write "System " + system_color + " requesting help - " + length(dying_robots) + "/" + length(robots) + " robots dying";
-        
-        loop target_system over: linked_systems {
-            if (!target_system.is_helping and target_system.criticality_ratio < 0.3) {
-                do send with: [
-                    receivers: target_system,
-                    protocol: 'fipa-request',
-                    performative: 'request',
-                    content: ['help_request', component_criticality, system_color]
-                ];
-            }
-        }
-    }
-    
-    // Process help requests using cooperative decision algorithm
-    reflex process_help_requests when: !empty(requests) {
-        loop request over: requests {
-            if (request.content[0] = 'help_request') {
-                int requester_criticality <- int(request.content[1]);
-                rgb requester_color <- rgb(request.content[2]);
-                component_system requester <- first(linked_systems where (each.system_color = requester_color));
-                
-                if (requester != nil) {
-                    // Apply cooperative decision algorithm from paper
-                    float my_anticipated_crit <- calculate_anticipated_criticality(requester);
-                    float their_current_crit <- float(requester_criticality);
-                    
-                    // Help if they are more critical and we won't become too critical
-                    if (their_current_crit > component_criticality and my_anticipated_crit < their_current_crit) {
-                        do agree with: [message: request, content: ['help_accepted']];
-                        do help_system(requester);
-                        write "System " + system_color + " agreed to help " + requester_color + 
-                              " (their_crit: " + their_current_crit + ", my_anticipated: " + my_anticipated_crit + ")";
-                    } else {
-                        do refuse with: [message: request, content: ['help_refused']];
-                        write "System " + system_color + " refused to help " + requester_color + 
-                              " (their_crit: " + their_current_crit + ", my_anticipated: " + my_anticipated_crit + ")";
-                    }
-                }
-            }
-        }
-    }
-    
-    // Handle responses to our help requests
-    reflex handle_help_responses when: !empty(agrees) or !empty(refuses) {
-        loop agree over: agrees {
-            if (agree.content[0] = 'help_accepted') {
-                write "System " + system_color + " received help from " + agree.sender;
-            }
-        }
-        
-        loop refuse over: refuses {
-            if (refuse.content[0] = 'help_refused') {
-                write "System " + system_color + " help refused by " + refuse.sender;
-            }
-        }
-    }
-    
-    // Stop helping when situation improves
-    reflex stop_helping_when_stable when: is_helping and criticality_ratio < 0.2 {
-        write "System " + system_color + " situation improved, stopping help";
-        
-        ask linked_systems {
-            if (myself.is_helping) {
-                myself.stop_helping(self);
-            }
-        }
-    }
-    
-    // Monitor and report system state
-    reflex monitor_system {
-        if (cycle mod 50 = 0) {
-            write "=== System " + system_color + " Status ===";
-            write "Total robots: " + length(robots);
-            write "Dying robots: " + length(dying_robots);
-            write "Criticality ratio: " + criticality_ratio;
-            write "Needs help: " + needs_help;
-            write "Is helping: " + is_helping;
-            write "================================";
-        }
-    }
-}

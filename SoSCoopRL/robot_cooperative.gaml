@@ -24,28 +24,7 @@ species robot_cooperative parent: robot_base skills: [fipa] {
 	
 	
 	
-	// ===== Calculate ANTICIPATED Criticality =====
-	int compute_anticipated_criticality (box_ box_to_take) {
-		int dist_box_to_me <- abs(box_to_take.myCell.grid_x - self.myCell.grid_x) + abs(box_to_take.myCell.grid_y - self.myCell.grid_y);
-		float dist_box_to_me_bk <- self distance_to box_to_take;
-		nest nest_cell <- nest first_with (each.color = box_to_take.color);
-		int dist_robot_to_nest <- abs(nest_cell.myCell.grid_x - self.myCell.grid_x) + abs(nest_cell.myCell.grid_y - self.myCell.grid_y);
-		int anticipated_battery_before_reward <- battery - (dist_box_to_me + dist_robot_to_nest) * battery_consum;
-		
-		if anticipated_battery_before_reward < 0 {
-			anticipated_battery_before_reward <- 0;
-		}
-				
-		int anticipated_battery <- anticipated_battery_before_reward + colors_reward_efficiency(box_to_take.color);
-		
-		if anticipated_battery < min_battery {
-			return max_criticality;
-		} else if anticipated_battery > max_battery {
-			return min_criticality;
-		} else {
-			return max_criticality - anticipated_battery;
-		}
-	}
+	
 	
     // ===== MOVE & SEARCH ===    
     reflex search_box when: !empty(reachable_boxes) and battery > 0 {

@@ -41,14 +41,22 @@ species robot_base skills: [moving] {
     init {
         speed <- 1.0;
         
-        loop while: true {
-            cell randCell <- any(cell);
-            bool isEmpty <- length(agents_inside(randCell)) = 0;
-            if (isEmpty) {
-                location <- randCell.location;
-                break;
-            }            
+//        loop while: true {
+//            cell randCell <- any(cell);
+//            bool isEmpty <- length(agents_inside(randCell)) = 0;
+//            if (isEmpty) {
+//                location <- randCell.location;
+//                break;
+//            }            
+//        }
+        list<cell> free_cells <- cell where (length(agents_inside(each)) = 0);    
+        if (!empty(free_cells)) {
+            location <- one_of(free_cells).location;
+        } else {
+        	write "couldn't find empty cell for robot!";
+        	ask world { do pause; }
         }
+        
         
         cell cell0 <- cell[0,0];
         cell cell1 <- cell[1,0];
@@ -63,6 +71,28 @@ species robot_base skills: [moving] {
             return reduced_reward;
         }
     }
+    
+    // ===== Calculate ANTICIPATED Criticality =====
+	int compute_anticipated_criticality (box_ box_to_take) {
+		int dist_box_to_me <- abs(box_to_take.myCell.grid_x - self.myCell.grid_x) + abs(box_to_take.myCell.grid_y - self.myCell.grid_y);
+		nest nest_cell <- nest first_with (each.color = box_to_take.color);
+		int dist_robot_to_nest <- abs(nest_cell.myCell.grid_x - self.myCell.grid_x) + abs(nest_cell.myCell.grid_y - self.myCell.grid_y);
+		int anticipated_battery_before_reward <- battery - (dist_box_to_me + dist_robot_to_nest) * battery_consum;
+		
+		if anticipated_battery_before_reward < 0 {
+			anticipated_battery_before_reward <- 0;
+		}
+				
+		int anticipated_battery <- anticipated_battery_before_reward + colors_reward_efficiency(box_to_take.color);
+		
+		if anticipated_battery < min_battery or anticipated_battery_before_reward = 0 {
+			return max_criticality;
+		} else if anticipated_battery > max_battery {
+			return min_criticality;
+		} else {
+			return max_criticality - anticipated_battery;
+		}
+	}
     
     // ===== COMMON REFLEXES =====
     reflex update_battery when: battery > 0 {
@@ -104,35 +134,80 @@ species robot_base skills: [moving] {
         carried_box.location <- location;
     }
     
-    reflex drop_box_in_nest when: carried_box != nil and target_nest != nil and battery > 0 {
-        if (myCell = target_nest.myCell) {
-            target_nest.deposited_boxes <- target_nest.deposited_boxes + 1;
-            battery <- battery + colors_reward_efficiency(carried_box.color);
-            
-            // Remove this box from all robots' references before killing it
-            box_ box_to_remove <- carried_box;
-            
-            ask agents where (each is robot_base) {
-			    if targeted_box = box_to_remove {
-			        targeted_box <- nil;
-			        write 'targeted_box cleared';
-			    }
-			    if carried_box = box_to_remove {
-			    	carried_box <- nil;
-			    	write 'carried_box cleared';
-			    }
-			}
-            
-            ask box_to_remove { do die; }
-            carried_box <- nil;
-            target_nest <- nil;
-        } else {
-            do goto target: target_nest on: cell return_path: true speed: float(robot_speed);
-        }
-    }
+//    reflex drop_box_in_nest when: carried_box != nil and target_nest != nil and battery > 0 {
+//        if (myCell = target_nest.myCell) {
+//            target_nest.deposited_boxes <- target_nest.deposited_boxes + 1;
+//            battery <- battery + colors_reward_efficiency(carried_box.color);
+//            
+//            // Remove this box from all robots' references before killing it
+//            box_ box_to_remove <- carried_box;
+//            
+//            ask agents where (each is robot_base) {
+//			    if targeted_box = box_to_remove {
+//			        targeted_box <- nil;
+//			        write 'targeted_box cleared';
+//			    }
+//			    if carried_box = box_to_remove {
+//			    	carried_box <- nil;
+//			    	write 'carried_box cleared';
+//			    }
+//			}
+//            
+//            ask box_to_remove { do die; }
+//            carried_box <- nil;
+//            target_nest <- nil;
+//        } else {
+//            do goto target: target_nest on: cell return_path: true speed: float(robot_speed);
+//        }
+//    }
+
+//	reflex drop_box_in_nest when: carried_box != nil and target_nest != nil and battery > 0 {
+//	        if (myCell = target_nest.myCell) {
+//	            target_nest.deposited_boxes <- target_nest.deposited_boxes + 1;
+//	            battery <- battery + colors_reward_efficiency(carried_box.color);
+//	
+//	            ask agents where (each is robot_base and each != self) {
+//	            
+//				    if targeted_box = myself.carried_box {
+//				        targeted_box <- nil;
+//				    }
+//				    if carried_box = myself.carried_box{
+//				    	carried_box <- nil;
+//				    }
+//				}
+//	            
+//	            ask carried_box { do die; }
+//	            carried_box <- nil;
+//	            target_nest <- nil;
+//	        } else {
+//	            do goto target: target_nest on: cell return_path: true speed: float(robot_speed);
+//	        }
+//	    }
+
+		reflex drop_box_in_nest when: carried_box != nil and target_nest != nil and battery > 0 and !dead(carried_box) {
+	        if myCell = carried_box.myCell and myCell = target_nest.myCell and carried_box.myCell = target_nest.myCell {	// Overkill max paranoia triple-sure is better than sorry!
+	            
+	            battery <- battery + colors_reward_efficiency(carried_box.color);
+	            
+                box_ box_to_remove <- carried_box;	
+	
+	            ask agents {
+				    if targeted_box = box_to_remove {
+				        targeted_box <- nil;
+				    }
+				    if carried_box = box_to_remove {
+				    	carried_box <- nil;
+				    }
+				}
+	            
+	            ask box_to_remove { do die; }
+
+	            carried_box <- nil;
+	            target_nest <- nil;
+	        } 
+	    }
     
     reflex die when: battery <= 0 {
-        write name + " battery depleted!";
         if (carried_box != nil) {
             carried_box.owner <- nil;
             carried_box <- nil;
@@ -142,6 +217,7 @@ species robot_base skills: [moving] {
             targeted_box <- nil;
         }    
         color <- rgb("black");
+        // do die;		// dont kill robot from simulation as zombie robots prevent survivorship bias!
     }
     
     

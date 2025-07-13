@@ -11,6 +11,10 @@ model robot_double_cooperative
 import "robot_base.gaml"
 
 species robot_double_cooperative parent: robot_base skills: [fipa] {
+	
+	// === SAPHESIA RELATED ===
+    list<rgb> helped_colors <- [];
+    
     // ==DOUBLE-COOP RELATED===
     bool box_reserved <- false;
     
@@ -25,46 +29,32 @@ species robot_double_cooperative parent: robot_base skills: [fipa] {
     string give_my_box_string <- "GiveMyBoxToYou";
 	
 	
+	//Override colors_reward_efficiency to support helping
+	int colors_reward_efficiency(rgb box_color) {
+        if (box_color = color or (helped_colors contains box_color)) {
+            return reward;
+        } else {
+            return reduced_reward;
+        }
+    }
 	
-	// ===== Calculate ANTICIPATED Criticality =====
-	int compute_anticipated_criticality (box_ box_to_take) {
-		int dist_box_to_me <- abs(box_to_take.myCell.grid_x - self.myCell.grid_x) + abs(box_to_take.myCell.grid_y - self.myCell.grid_y);
-		nest nest_cell <- nest first_with (each.color = box_to_take.color);
-		int dist_robot_to_nest <- abs(nest_cell.myCell.grid_x - self.myCell.grid_x) + abs(nest_cell.myCell.grid_y - self.myCell.grid_y);
-		int anticipated_battery_before_reward <- battery - (dist_box_to_me + dist_robot_to_nest) * battery_consum;
-		
-		if anticipated_battery_before_reward < 0 {
-			anticipated_battery_before_reward <- 0;
-		}
-				
-		int anticipated_battery <- anticipated_battery_before_reward + colors_reward_efficiency(box_to_take.color);
-		
-		if anticipated_battery < min_battery or anticipated_battery_before_reward = 0 {
-			return max_criticality;
-		} else if anticipated_battery > max_battery {
-			return min_criticality;
-		} else {
-			return max_criticality - anticipated_battery;
-		}
-	}
 	
     // ===== MOVE & SEARCH ===    
     reflex search_box when: !empty(reachable_boxes) and battery > 0 {
     	loop bx over: reachable_boxes {
     		bool message_sent <- false;
-    		int box_efficiency <- colors_reward_efficiency(bx.color);
     		int ant_reach_crit <- compute_anticipated_criticality(bx);  // ant. crit. of reachable box
     		
     		if bx.owner = nil {
     			if carried_box = nil {
-	    			if targeted_box = nil {		// dont carry dont target 
+	    			if targeted_box = nil {		// neither carrying, nor targeting 
 	    				targeted_box <- bx;
 	    				targeted_box.owner <- self;
-	    			} else {					// dont carry but target
+	    			} else {					// carrying but not targeting
 	    				int my_target_box_crit <- compute_anticipated_criticality(targeted_box);
 	    				// check if this is a better box
 	    				if ant_reach_crit < my_target_box_crit {
-	    					write 'better box!! suppress target';
+	    					//write 'better box!! suppress target';
 	    					targeted_box.owner <- nil;
 	    					targeted_box <- bx;
 	    					targeted_box.owner <- self;
@@ -74,9 +64,12 @@ species robot_double_cooperative parent: robot_base skills: [fipa] {
 	    			int my_carried_box_crit <- compute_anticipated_criticality(carried_box);
 	    			// check if this is a better box
 	    			if ant_reach_crit < my_carried_box_crit {
-	    				write 'better box!! suppress carried';
-	    				carried_box.owner <-nil;		//verify
+	    				// write 'better box!! suppress carried';
+	    				
+	    				// drop the current box
+	    				carried_box.owner <-nil;		
 	    				carried_box <- nil;
+	    				// target the new better box
 	    				targeted_box <- bx;
 	    				targeted_box.owner <- self;
 	    			}
@@ -116,7 +109,6 @@ species robot_double_cooperative parent: robot_base skills: [fipa] {
 	reflex request_criticality when: is_need_a_box and carried_box=nil and targeted_box=nil and !is_request_criticality_last_cycle and battery>0 {}
 	
 	reflex read_requests when: !empty(requests) and battery > 0 {
-		write 'reading requests';
 		loop request over: requests {
 			string request_type <- request.contents[0];
 			if request_type=criticality_string and (carried_box != nil or targeted_box != nil) {
@@ -129,7 +121,7 @@ species robot_double_cooperative parent: robot_base skills: [fipa] {
 				}
 				
 				int sender_ant_crit <- int(request.contents[1]);
-				int sender_instant_crit <- int(request.contents[2]);  // CHECK!!
+				int sender_instant_crit <- int(request.contents[2]);  
 				//write('request contentst are: ' + request.contents);
 				//write('request contentst at index 2 are: ' + request.contents[2]);
 				
@@ -219,7 +211,7 @@ species robot_double_cooperative parent: robot_base skills: [fipa] {
     	    // Check if giver is still in communication range
     	    // list<robot_double_cooperative> nearby <- (robot_double_cooperative where (myCell.neighbors_at_robot_speech contains each.myCell));
 	    	// if (nearby contains giver) {
-	    	write 'requesting box from best giver: ' + giver;
+	    	// write 'requesting box from best giver: ' + giver;
 	    	do start_conversation to: [giver] protocol: 'fipa-request' performative: 'request' contents: [demand_box_string];
 	    	
 	    	loop inform over: informs {

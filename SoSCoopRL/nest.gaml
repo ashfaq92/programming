@@ -13,7 +13,6 @@ import "cell_.gaml"
 /* Insert your model definition here */
 
 species nest {
-	int deposited_boxes <- 0;
 	rgb color;
 	//cell myCell update: cell first_with (each overlaps self);
 	//cell myCell <- cell(location);  // fastest
