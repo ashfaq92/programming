@@ -8,7 +8,7 @@
 
 model robot_saphesia
 
-import "robot_double_cooperative.gaml"
+import "robot_cooperative.gaml"
 
 global {
 	 // SApHESIA Model Parameters (from research paper)
@@ -26,8 +26,8 @@ global {
 
 species component_system skills: [fipa] {
 	rgb system_color;
-    list<robot_double_cooperative > robots update: robot_double_cooperative where (each.color = system_color and !dead(each));
-    list<robot_double_cooperative> dying_robots update: robots where (each.battery < each.max_battery * BATTERY_DYING_THRESHOLD);
+    list<robot_cooperative > robots update: robot_cooperative where (each.color = system_color and !dead(each));
+    list<robot_cooperative> dying_robots update: robots where (each.battery < each.max_battery * BATTERY_DYING_THRESHOLD);
     
 
     
@@ -118,4 +118,3 @@ species component_system skills: [fipa] {
 		        color: rgb("black") size: 0.8;
 		}
 }
-

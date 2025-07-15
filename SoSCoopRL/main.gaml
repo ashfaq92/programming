@@ -1,19 +1,19 @@
 model main
+
 import "cell_.gaml"
 import "nest.gaml"
 import "box_.gaml"
-import "robot_random.gaml"
 import "robot_greedy.gaml"
-import "robot_double_cooperative.gaml"
-import "robot_saphesia.gaml"
+import "robot_cooperative.gaml"
+import "robot_saphesia.gaml" 
 
 global {
 	
 	geometry shape <- square(50); 
 	
-    float seed <- 0.0 parameter:true;
-    int max_cycles <- 3000;
-    string robot_type_param <- "saphesia";
+    float randSeed <- 42.0;
+    int max_cycles <- 1000;
+    string robot_type_param <- "greedy";
     
     // Box spawning control
     int box_creation_interval <- 3;
@@ -26,27 +26,63 @@ global {
     }
     
     action create_robots_with_colors(string robot_type) {
+        // Get available spawn locations (avoiding nests)
+        list<cell> spawn_cells <- cell where (length(agents_inside(each)) = 0);
+        
         switch robot_type {
-            match "random" { 
-                create robot_random number: 30 with: [color::rgb("red")];
-                create robot_random number: 30 with: [color::rgb("green")];
-                create robot_random number: 30 with: [color::rgb("blue")];
-            }
             match "greedy" { 
-                create robot_greedy number: 30 with: [color::rgb("red")];
-                create robot_greedy number: 30 with: [color::rgb("green")];
-                create robot_greedy number: 30 with: [color::rgb("blue")];
+                // Create robots with deterministic locations
+                loop i from: 0 to: 29 {
+                    int cell_index <- int((randSeed + i * 23) * 37) mod length(spawn_cells);
+                    create robot_greedy number: 1 with: [color::rgb("red"), location::spawn_cells[cell_index].location];
+                    remove index: cell_index from: spawn_cells;
+                }
+                loop i from: 30 to: 59 {
+                    int cell_index <- int((randSeed + i * 23) * 37) mod length(spawn_cells);
+                    create robot_greedy number: 1 with: [color::rgb("green"), location::spawn_cells[cell_index].location];
+                    remove index: cell_index from: spawn_cells;
+                }
+                loop i from: 60 to: 89 {
+                    int cell_index <- int((randSeed + i * 23) * 37) mod length(spawn_cells);
+                    create robot_greedy number: 1 with: [color::rgb("blue"), location::spawn_cells[cell_index].location];
+                    remove index: cell_index from: spawn_cells;
+                }
             }
-            match "double_cooperative" { 
-                create robot_double_cooperative number: 30 with: [color::rgb("red")];
-                create robot_double_cooperative number: 30 with: [color::rgb("green")];
-                create robot_double_cooperative number: 30 with: [color::rgb("blue")];
+            match "cooperative" { 
+                // Create robots with deterministic locations
+                loop i from: 0 to: 29 {
+                    int cell_index <- int((randSeed + i * 23) * 37) mod length(spawn_cells);
+                    create robot_cooperative number: 1 with: [color::rgb("red"), location::spawn_cells[cell_index].location];
+                    remove index: cell_index from: spawn_cells;
+                }
+                loop i from: 30 to: 59 {
+                    int cell_index <- int((randSeed + i * 23) * 37) mod length(spawn_cells);
+                    create robot_cooperative number: 1 with: [color::rgb("green"), location::spawn_cells[cell_index].location];
+                    remove index: cell_index from: spawn_cells;
+                }
+                loop i from: 60 to: 89 {
+                    int cell_index <- int((randSeed + i * 23) * 37) mod length(spawn_cells);
+                    create robot_cooperative number: 1 with: [color::rgb("blue"), location::spawn_cells[cell_index].location];
+                    remove index: cell_index from: spawn_cells;
+                }
             }
             match "saphesia" { 
-        	    // Create the robots first
-			    create robot_double_cooperative number: 30 with: [color::rgb("red")];
-			    create robot_double_cooperative number: 30 with: [color::rgb("green")];
-			    create robot_double_cooperative number: 30 with: [color::rgb("blue")];
+        	    // Create the robots first with deterministic locations
+        	    loop i from: 0 to: 29 {
+                    int cell_index <- int((randSeed + i * 23) * 37) mod length(spawn_cells);
+                    create robot_cooperative number: 1 with: [color::rgb("red"), location::spawn_cells[cell_index].location];
+                    remove index: cell_index from: spawn_cells;
+                }
+                loop i from: 30 to: 59 {
+                    int cell_index <- int((randSeed + i * 23) * 37) mod length(spawn_cells);
+                    create robot_cooperative number: 1 with: [color::rgb("green"), location::spawn_cells[cell_index].location];
+                    remove index: cell_index from: spawn_cells;
+                }
+                loop i from: 60 to: 89 {
+                    int cell_index <- int((randSeed + i * 23) * 37) mod length(spawn_cells);
+                    create robot_cooperative number: 1 with: [color::rgb("blue"), location::spawn_cells[cell_index].location];
+                    remove index: cell_index from: spawn_cells;
+                }
 			    
         		
     		    // Then create the component systems to manage them
@@ -57,8 +93,23 @@ global {
         }
     }
     
-
-
+    // Fixed deterministic box spawning with proper distribution
+    action spawn_initial_boxes {
+        // Use a fixed number instead of rnd() for deterministic behavior
+        int initial_box_count <- 12; // Fixed number instead of rnd(10, 15)
+        
+        list<cell> empty_cells <- cell where (length(agents_inside(each)) = 0);
+        
+        // Create boxes distributed across the grid deterministically
+        loop i from: 0 to: min(initial_box_count - 1, length(empty_cells) - 1) {
+            // Use seed-based deterministic distribution instead of sequential placement
+            int cell_index <- int((randSeed + i * 17) * 31) mod length(empty_cells);
+            create box_ number: 1 with: [location: empty_cells[cell_index].location];
+            
+            // Remove the used cell to avoid duplicates
+            remove index: cell_index from: empty_cells;
+        }
+    }
 
 	reflex spawn_boxes_at_interval {
 	    box_creation_counter <- box_creation_counter + 1;
@@ -66,7 +117,9 @@ global {
 	        list<cell> empty_cells <- cell where (length(agents_inside(each)) = 0);
 	        write 'empty cells are ' + length(empty_cells);
 	        if (!empty(empty_cells)) {
-	            create box_ number: 1 with: [location: one_of(empty_cells).location];
+	            // For deterministic behavior, use indexed access instead of one_of()
+	            int cell_index <- rnd(length(empty_cells) - 1);
+	            create box_ number: 1 with: [location: empty_cells[cell_index].location];
 	        }
 	        box_creation_counter <- 0;
 	    }
@@ -82,7 +135,8 @@ global {
 
 // ===== MODULAR EXPERIMENT: CONFIGURABLE ROBOT TYPE =====
 experiment robot_analysis type: gui {
-    
+    // Set seed directly as a parameter
+    parameter "Random Seed" var: randSeed <- 42.0;
     
     
     // Data collection lists
@@ -91,10 +145,19 @@ experiment robot_analysis type: gui {
     list<int> alive_robots_history <- [];
     
     init {
+        // Explicitly set the seed before creating simulation
+        seed <- randSeed;
+        write "Using seed: " + seed;
+        
         create simulation with: [seed::seed];
         ask simulation {
+            // Set seed again in simulation context to ensure consistency
+            seed <- randSeed;
+            write "Simulation seed set to: " + seed;
+            
             do spawn_nests();
-            create box_ number: rnd(10, 15);
+            // Use deterministic box spawning instead of random
+            do spawn_initial_boxes();
             do create_robots_with_colors(robot_type_param);
         }
     }
@@ -109,52 +172,26 @@ experiment robot_analysis type: gui {
 	        
 	        // Get metrics based on robot type
 	        switch robot_type_param {
-	            match "random" {
-	                if (!empty(robot_random)) {
-	                    mean_battery <- mean(robot_random collect each.battery);
-	                    alive_robots <- length(robot_random where (each.battery > 0));
-	                }
-	            }
 	            match "greedy" {
 	                if (!empty(robot_greedy)) {
 	                    mean_battery <- mean(robot_greedy collect each.battery);
 	                    alive_robots <- length(robot_greedy where (each.battery > 0));
 	                }
-
-					// if we calculate mean battery levels of alive robots only, we get survivorship bias!
-//					if (!empty(robot_greedy)) {
-//				        list<robot_greedy> alive_robots_list <- robot_greedy where (each.battery > 0);
-//				        if (!empty(alive_robots_list)) {
-//				            mean_battery <- mean(alive_robots_list collect each.battery);
-//				            alive_robots <- length(alive_robots_list);
-//				        }
-//				    }
-	               
 	            }
-	            match "double_cooperative" {
-	                if (!empty(robot_double_cooperative)) {
-	                    mean_battery <- mean(robot_double_cooperative collect each.battery);
-	                    alive_robots <- length(robot_double_cooperative where (each.battery > 0));
+	            match "cooperative" {
+	                if (!empty(robot_cooperative)) {
+	                    mean_battery <- mean(robot_cooperative collect each.battery);
+	                    alive_robots <- length(robot_cooperative where (each.battery > 0));
 	                }
-	                
-//	                if (!empty(robot_double_cooperative)) {
-//				        list<robot_double_cooperative> alive_robots_list <- robot_double_cooperative where (each.battery > 0);
-//				        if (!empty(alive_robots_list)) {
-//				            mean_battery <- mean(alive_robots_list collect each.battery);
-//				            alive_robots <- length(alive_robots_list);
-//				        }
-//				    }
+
 	            }
 	            match "saphesia" {
-	                if (!empty(robot_double_cooperative)) {
-	                    mean_battery <- mean(robot_double_cooperative collect each.battery);
-	                    alive_robots <- length(robot_double_cooperative where (each.battery > 0));
+	                if (!empty(robot_cooperative)) {
+	                    mean_battery <- mean(robot_cooperative collect each.battery);
+	                    alive_robots <- length(robot_cooperative where (each.battery > 0));
 	                }
 	            }
 	        }
-	        
-
-	        
 	        
 	        // Store data in histories
 	        add mean_battery to: myself.battery_history;
@@ -175,9 +212,8 @@ experiment robot_analysis type: gui {
             species cell aspect: default;
             species nest aspect: default;
             species box_ aspect: default;
-            species robot_random aspect: default;
             species robot_greedy aspect: default;
-            species robot_double_cooperative aspect: default;
+            species robot_cooperative aspect: default;
             //species component_system aspect: default;
         }
         
