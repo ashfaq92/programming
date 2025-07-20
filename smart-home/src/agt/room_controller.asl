@@ -7,7 +7,7 @@
         .findall(A, play(A, assistant, _), Voters);
 
         // Open "voting machine" for votes
-        vm::open(Options, Voters, 4000)
+        vm::open(Options, Voters, 4000);
         .print("Options are ", Options, " , voters are ", Voters);
 
         // set the argument of organizational goal "vote"

@@ -1,4 +1,3 @@
-// File: /src/agt/S-CS1.asl
 // Scooter subsystem supervisor agent. Manages scooter availability and assignments.
 
 { include("$jacamo/templates/common-cartago.asl") }
@@ -57,7 +56,7 @@
 +!update_route(NewRoute) <-
     .print("S-CS1: Ignoring update_route for self.").
 
-// Add to both supervisor files - emergency vehicle recall
+// Emergency vehicle recall
 +!recall_vehicles(Reason) <-
     .print("Supervisor: EMERGENCY RECALL - ", Reason);
     // Send stop command to vehicles

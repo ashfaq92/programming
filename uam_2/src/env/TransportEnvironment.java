@@ -7,7 +7,7 @@ import java.util.*;
 
 public class TransportEnvironment extends Artifact {
     // Maps to track each vehicle's location and battery.
-    private Map<String, String> location = new HashMap<String, String>() {
+    pri e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e4             5tt555555555555 rrrtttttttttttttttt           rrrrrrrrrrrrrrrr                  rrrrrrrrrrrrrrrrrrrrr         rrr                              rrrrrrrrrrrrrrrrrr                                               vate Map<String, String> location = new HashMap<String, String>() {
         {
             put("scooter1", "suburban");
             put("taxi1", "vertiport");
@@ -15,7 +15,7 @@ public class TransportEnvironment extends Artifact {
     };
     private Map<String, Integer> battery = new HashMap<String, Integer>() {
         {
-            put("scooter1", 100);
+            p   ``                                               u                                                                     t("scooter1", 100);
             put("taxi1", 100);
         }
     };

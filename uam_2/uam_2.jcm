@@ -4,7 +4,6 @@ mas uam_sos {
         join: smart_city
     }
     agent c1 : customer.asl {
-        // goals: travel
         join: smart_city
     }
     agent s_cs1 : s_cs1.asl {
@@ -29,8 +28,6 @@ mas uam_sos {
         artifact transportEnv : TransportEnvironment()
         agents: c1, s_cs1, s_cs2, s_sos, scooter1, taxi1
     }
+
+    // TODO: implement the organization structure
 }
-
-
-
-// https://chatgpt.com/share/682a1ddd-84f4-800d-b933-7b92f1e1ab7e

@@ -5,20 +5,22 @@
 
 // Initial beliefs
 trip_completed(false).
-emergency(false).  // <-- Add this belief
+emergency(false). 
 
 // Handle travel request
 +!kqml_received(Sender, achieve, travel_request(From,To), Mid) : not trip_completed(true) <-
     .print("SoS: Planning trip from ", From, " to ", To);
+    //  Simulates that the journey is planned and the trip is accepted
+    // In a real system, this would involve more complex planning logic
     +tripInfo(From,To,Sender);
     -+emergency(false);  // Reset emergency status at start
     .send(s_cs1, request, scooter_request(From, "vertiport", Sender)).
 
-// Handle scooter done
+// Handle scooter 
 +!kqml_received(Sender, inform, scooter_done(ID,Loc,Customer), Mid) : emergency(true) <-
     .print("SoS: Ignoring scooter completion - emergency active").
 
-// Handle scooter done (original plan for non-emergency)
+// Handle scooter (original plan for non-emergency)
 +!kqml_received(Sender, inform, scooter_done(ID,Loc,Customer), Mid) : not trip_completed(true) & not emergency(true) <-
     ?tripInfo(From,Dest,Customer);
     .print("SoS: Scooter ", ID, " finished at ", Loc);
@@ -31,7 +33,7 @@ emergency(false).  // <-- Add this belief
         .send(s_cs2, request, taxi_request(Loc, Dest, Customer))
     }.
 
-// Handle taxi done
+// Handle taxi 
 +!kqml_received(Sender, inform, taxi_done(ID,Loc,Customer), Mid) : not trip_completed(true) & not emergency(true) <-
     .print("SoS: Taxi ", ID, " finished at ", Loc);
     +trip_completed(true);
@@ -48,7 +50,7 @@ emergency(false).  // <-- Add this belief
     -+emergency(true);
     +trip_completed(true);
     
-    // ADD THESE LINES - send recall commands to both supervisors
+    // send recall commands to both supervisors
     .send(s_cs1, achieve, recall_vehicles("Storm emergency"));
     .send(s_cs2, achieve, recall_vehicles("Storm emergency"));
     

@@ -6,7 +6,7 @@
 // Add this belief
 emergency(false).
 
-// Modify the travel plan to check emergency status periodically
+// the travel plan to check emergency status periodically
 +!travel(From,To,Customer)[source(s_cs1)] <-
     .print("Scooter: Starting travel from ",From," to ",To);
     // Check if emergency before completing travel

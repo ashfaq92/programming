@@ -6,10 +6,7 @@
 // Initial beliefs
 trip_complete(false).
 
-// Plan to request trip
-// +!travel : not trip_complete(true) <-
-//     .print("Customer: Requesting trip from suburban to downtown");
-//     .send(s_sos,achieve,travel_request(suburban,downtown)).
+
 
 +!travel <-
     .print("Customer: Requesting trip from suburban to downtown keskusta");
