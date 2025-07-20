@@ -1,153 +1,176 @@
 import utils
 from robot import Robot
 
+
 class RobotCooperative(Robot):
     """
-    Cooperative robot that maximizes its own energy by choosing boxes with best anticipated criticality (lowest CA values)
+    Cooperative robot: negotiates direct box exchanges with peers
+    based on current and anticipated criticalities.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.forced_deposit = False
-        self.crit_current = None
+        self.coop_reqs = []     # store incoming cooperation requests
 
-    def _box_still_exists(self, box):
-        """Check if a box still exists on the grid"""
-        return box in self.grid.boxes and self._find_box_position(box) is not None
+    def _evaluate_situation(self):
+        """Cooperative robots evaluate situation by updating criticality"""
+        self._evaluate_current_criticality()  # This updates self.crit_current
 
-    def _evaluate_current_criticality(self):
-        # Initialize the current criticality based on carried/target state
-        self.crit_current = float('inf')
-        try:
-            if self.is_carrying:
-                self.crit_current = self.anticipated_criticality(self.carried_box)
-            elif self.has_target and self._box_still_exists(self.target_box):
-                self.crit_current = self.anticipated_criticality(self.target_box)
-            elif self.has_target:
-                # Target box no longer exists, clear it
-                self.target_box = None
-        except ValueError as e:
-            # If we can't calculate criticality, clear the target
-            print(f"Warning: {e}. Clearing target.") if utils.DEBUG_MODE else None
-            if self.has_target:
-                self.target_box = None
+    def _make_decision(self):
+        """Cooperative decision making"""
+        # 1) Process any pending cooperation requests FIRST
+        self.process_coop_reqs()
+        
+        # 2) Look for better boxes or cooperation opportunities
+        self._find_and_target_better_box()
 
-    def find_and_target_better_box(self):
-        # update visible boxes (within perception radius)
+    def _find_and_target_better_box(self):
+        """EXACT research algorithm - no modifications"""
         visible_boxes = self._get_visible_boxes()
-        # check all visible boxes for better
+        
+        # Current criticality baseline
+        CA_current = self.crit_current
+        
         for box in visible_boxes:
-            if box.status != "INITIALIZED":  # skip uninitialized boxes
+            if box.status == "DEPOSITED":
                 continue
-            
-            # Double-check box still exists before calculating criticality
+                
             if not self._box_still_exists(box):
                 continue
                 
+            # Calculate temp_CA = criticality_if_i_had(bₖ)
             try:
-                crit_temp = self.anticipated_criticality(box)
-            except ValueError as e:
-                # Box was removed between checks, skip it
-                print(f"Warning: {e}. Skipping box.") if utils.DEBUG_MODE else None
+                temp_CA = self.anticipated_criticality(box)
+            except ValueError:
                 continue
-
-            if crit_temp < self.crit_current:
-                # found a SIGNIFICANTLY better box
-                self.crit_current = crit_temp
-                # target the new better box
-                self.target_box = box
-                if self.is_carrying:
-                    self.forced_deposit = True
-
-    def act_on_current_state(self):
-        # movement logic: execute movement based on the current state
-        # If the robot was already carrying a box, it drops it off(deposits) before targeting the new one.
-        if self.forced_deposit or self.is_carrying:
-            if utils.DEBUG_MODE and self.target_nest:
-                nest_x, nest_y = self.target_nest.position
-                nest_cell = self.grid.cells[nest_y][nest_x]
-                print(f"Robot at {self.position}, target_nest at {self.target_nest.position}, "
-                      f"nest_cell.robot: {nest_cell.robot is not None}, "
-                      f"nest_cell.nest: {nest_cell.nest is not None}, "
-                      f"positions match: {self.target_nest.position == self.position}, "
-                      f"on_nest: {self.is_on_target_nest}")
-
-            if self.is_on_target_nest:
-                self.deposit()
-                if self.forced_deposit:
-                    self.forced_deposit = False
-            else:
-                self.go(self.target_nest)
-        elif self.has_target:
-            # Check if target box still exists before going to it
-            if not self._box_still_exists(self.target_box):
-                self.target_box = None
-                return
                 
-            if self.is_on_target_box:
-                self.pickup()
-            else:
-                self.go(self.target_box)
-        # no target - find the best available box
-        else:
-            best_box = self.choose_target_box()
-            if best_box:
-                self.go(best_box)
-            else:
-                self.move()
+            # if temp_CA < CA_current: (EXACT from paper)
+            if temp_CA < CA_current:
+                if box.status == "CARRIED":  # if bₖ is held by rⱼ:
+                    box_holder = self._find_box_holder(box)
+                    if box_holder and isinstance(box_holder, RobotCooperative):
+                        # send Co-op request to rⱼ with (Cᵢ_current, temp_CA)
+                        self.send_coop_req(box_holder, box)
+                else:  # box is free
+                    # update CA_current ← temp_CA
+                    CA_current = temp_CA
+                    self.crit_current = temp_CA
+                    # choose bₖ as new target
+                    self.target_box = box
+                    # if carrying another box: deposit it
+                    if self.is_carrying:
+                        self.forced_deposit = True
+                    break  # Found a better option
 
-    def _target_box_missing(self):
-        return self.has_target and not self._box_still_exists(self.target_box)
+    def send_coop_req(self, box_holder, box):
+        """
+        Send a cooperation request - but only if the holder still has the box
+        """
 
-    def step(self):
-        "main decision-making for non-cooperative robot"
-        if self.energy <= 0:    # as long as the robot has energy
+        # double-check if the box holder still has the box
+        if box_holder.carried_box != box:
             return
-
-        # CRITICAL FIX: If robot is on a nest cell but not carrying, move away to free the cell!
-            # CRITICAL FIX: If robot is on a nest cell but not carrying, move away to free the cell!
-        current_cell = self._current_cell
-        if current_cell.nest is not None and not self.is_carrying:
-            # Robot is on a nest but has no box - free up the cell for others
-            if utils.DEBUG_MODE:
-                print(f"NEST-CLEARING: Robot at {self.position} moving away from {current_cell.nest.color} nest")
-            self.move()
-            return
-
-        # Remove target if box no longer exists
-        if self._target_box_missing():
-            self.target_box = None
         
-        # Main decision loop: if no boxes available, just move randomly
-        if not self.grid.boxes:
-            self.move()
+        req = {
+            "sender": self,
+            "c_sender": self.crit_current,
+            "ca_sender": self.anticipated_criticality(box),
+            "box": box
+        }
+        box_holder.receive_coop_req(req)
+        print(f"DEBUG: {self} requesting {box.color} box from {box_holder}") if utils.DEBUG_MODE else None
+
+    def receive_coop_req(self, req):
+        """
+        Called by another robot to register a coop request.
+        It will be processed later during decision-making.
+        """
+        self.coop_reqs.append(req)
+
+    def process_coop_reqs(self):
+        """Process cooperation requests according to research specification"""
+        if not self.coop_reqs:
+            return
+        
+        # Process valid requests
+        valid_reqs = [req for req in self.coop_reqs if self.carried_box == req["box"]]
+        if not valid_reqs:
+            self.coop_reqs.clear()
             return
 
+        req = valid_reqs[0]
+        sender = req["sender"]
+        C_sender = req["c_sender"]        # Sender's current criticality
+        CA_sender = req["ca_sender"]      # Sender's anticipated criticality with box
+        box = req["box"]
+        
+        # Use current criticality (already updated in _evaluate_situation)
+        C_mine = self.crit_current  # Use consistent criticality
+        
+        # Research algorithm decision logic:
+        if C_mine < C_sender:  # I'm less critical than requester
+            if CA_sender < C_sender:  # Requester would improve by taking box
+                self._accept_exchange(sender, box)
+            else:  # Requester would get worse - refuse
+                self._refuse_exchange(sender, box)
+        else:  # I'm more/equally critical than requester
+            try:
+                CA_mine = self.anticipated_criticality(box)  # My anticipated criticality
+                if CA_mine < C_mine:  # Keeping box would improve my situation
+                    self._refuse_exchange(sender, box)
+                else:  # Keeping box would make me worse - give it away
+                    self._accept_exchange(sender, box)
+            except ValueError:
+                self._refuse_exchange(sender, box)
+    
+        self.coop_reqs.clear()
+
+
+
+    def _find_box_holder(self, box):
+        """Find which robot is holding a specific box"""
+        if box.holder:
+            return box.holder
+    
+        # Search all robots
+        for robot in self.grid.robots:
+            if robot.carried_box == box:
+                return robot
+    
+        # Box holder not found - return None instead of raising exception
+        print(f"Warning: Cannot find box holder for {box}") if utils.DEBUG_MODE else None
+        return None
+
+    def _accept_exchange(self, requester, box):
+        """Accept exchange by DIRECTLY transferring box to requester"""
+        assert self.carried_box is box, "Can't accept exchange for a box I don't hold"
+        print(f"DEBUG: EXCHANGE! {self} giving {box.color} box directly to {requester}") if utils.DEBUG_MODE else None
+        
+        # Clear my state
+        self.carried_box = None
+        self.target_nest = None
+        self.target_box = None
+        
+        # DIRECT TRANSFER to requester
+        requester.carried_box = box
+        box.holder = requester
+        box.set_status("CARRIED")
+        box.set_position(requester.position)
+        
+        # Set requester's target nest
+        for nest in self.grid.nests:
+            if nest.color == box.color:
+                requester.target_nest = nest
+                break
+    
+        requester.target_box = None
+    
+        # Update both robots' criticality
         self._evaluate_current_criticality()
-        self.find_and_target_better_box()
-        self.act_on_current_state()
-
-    def choose_target_box(self):
-        """
-        Choose the box with the lowest anticipated criticality (best energy outcome)
-        """
-        if self.is_carrying:
-            return None
+        requester._evaluate_current_criticality()
         
-        visible_boxes = self._get_visible_boxes()
-        best_box = None
-        crit_best = float('inf')
+        print(f"{self} → gave {box.color} box directly to {requester}") if utils.DEBUG_MODE else None
 
-        for box in visible_boxes:
-            if box.status == "INITIALIZED" and self._box_still_exists(box):     # Only consider available boxes
-                try:
-                    crit = self.anticipated_criticality(box)
-                except ValueError:
-                    continue
-                if crit < crit_best:
-                    crit_best = crit
-                    best_box = box
-        if best_box:
-            self.target_box = best_box
-        
-        return best_box
+
+    def _refuse_exchange(self, sender, box):
+        print(f"{self} refused to exchange {box} with {sender}") if utils.DEBUG_MODE else None
